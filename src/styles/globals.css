@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --mgm-red: #dc2626; /* Merah MGM */
+  --mgm-dark: #1f2937;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900;
+  font-family: 'Inter', sans-serif; /* Pastikan font ini terload atau gunakan font sistem */
+}
+
+/* Custom utility untuk button agar konsisten */
+.btn-primary {
+  @apply bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-200 shadow-sm;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded transition duration-200;
+}
+
+/* Status Badge Styles */
+.badge-pending { @apply bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-bold; }
+.badge-process { @apply bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold; }
+.badge-done { @apply bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold; }
