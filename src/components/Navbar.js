@@ -12,6 +12,9 @@ export default function Navbar() {
   const { user } = useAuth();
   const router = useRouter();
   
+  // State untuk Mobile Menu Toggle
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   // LOGIKA OTORISASI DASHBOARD SPV
   const SUPER_ADMIN_ID = ["MGM 4329", "MGM 1111"];
   const isAuthorizedSPV = user && SUPER_ADMIN_ID.includes(user.nik);
@@ -34,22 +37,13 @@ export default function Navbar() {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setIsUpdating(true);
-
     try {
-      // 1. Update Nama di Firestore
       const userRef = doc(db, "users", user.uid);
-      await updateDoc(userRef, {
-        name: editData.name
-      });
-
-      // 2. Update Password di Auth (jika diisi)
+      await updateDoc(userRef, { name: editData.name });
       if (editData.newPassword) {
-        if (editData.newPassword.length < 6) {
-          throw new Error("Password minimal 6 karakter.");
-        }
+        if (editData.newPassword.length < 6) throw new Error("Password minimal 6 karakter.");
         await updatePassword(auth.currentUser, editData.newPassword);
       }
-
       Swal.fire({
         icon: 'success',
         title: 'PROFIL DIPERBARUI',
@@ -57,7 +51,6 @@ export default function Navbar() {
         confirmButtonColor: '#00804D',
         customClass: { popup: 'rounded-[2rem]' }
       });
-      
       setIsModalOpen(false);
     } catch (error) {
       console.error(error);
@@ -77,10 +70,22 @@ export default function Navbar() {
       <nav className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 md:gap-6">
               
-              <Link href="/" className="flex items-center gap-4 group transition-transform active:scale-95">
-                <div className="relative w-28 h-12 md:w-36 md:h-14 flex items-center justify-center px-3 py-1 bg-white rounded-xl border border-gray-100 group-hover:border-[#00804D]/30 transition-all shadow-sm overflow-hidden">
+              {/* MOBILE MENU BUTTON - MUNCUL HANYA DI LAYAR KECIL */}
+              <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden p-2 rounded-xl bg-gray-50 text-[#1e4890] hover:bg-[#00804D]/10 transition-colors"
+              >
+                {isMobileMenuOpen ? (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                ) : (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                )}
+              </button>
+
+              <Link href="/" className="flex items-center gap-3 md:gap-4 group transition-transform active:scale-95">
+                <div className="relative w-24 h-10 md:w-36 md:h-14 flex items-center justify-center px-2 py-1 bg-white rounded-xl border border-gray-100 group-hover:border-[#00804D]/30 transition-all shadow-sm overflow-hidden">
                   <Image 
                     src="/assets/logo-mgm.png" 
                     alt="MGM Logo" 
@@ -90,78 +95,78 @@ export default function Navbar() {
                     priority={true}
                   />
                 </div>
-
-                <div className="h-8 w-[1px] bg-gray-200 hidden md:block"></div>
-
                 <div className="flex flex-col">
-                  <span className="font-black text-gray-900 text-sm md:text-lg tracking-tighter leading-none italic uppercase">
+                  <span className="font-black text-gray-900 text-xs md:text-lg tracking-tighter leading-none italic uppercase">
                     MGM <span className="text-[#00804D]">SERVICE</span>
                   </span>
-                  <span className="text-[7px] font-bold text-[#1e4890] uppercase tracking-[0.2em] leading-tight">
+                  <span className="text-[6px] md:text-[7px] font-bold text-[#1e4890] uppercase tracking-[0.2em] leading-tight">
                     Management System
                   </span>
                 </div>
               </Link>
               
+              {/* DESKTOP MENU - HIDDEN ON MOBILE */}
               <div className="hidden lg:ml-6 lg:flex lg:items-center lg:gap-1">
                 <NavLink href="/" active={router.pathname === '/'}>Beranda</NavLink>
                 <NavLink href="/request" active={router.pathname === '/request'}>Buat Laporan</NavLink>
                 <NavLink href="/request/status" active={router.pathname === '/request/status'}>Status Saya</NavLink>
-                
-                {/* LOGIKA PENYEMBUNYIAN DASHBOARD SPV */}
                 {isAuthorizedSPV && (
                   <NavLink href="/admin/DashboardSPV" active={router.pathname === '/admin/DashboardSPV'}>Dashboard SPV</NavLink>
                 )}
-                
                 <NavLink href="/pic/DashboardPIC" active={router.pathname === '/pic/DashboardPIC'}>Tugas PIC</NavLink>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               {user ? (
-                <div className="flex items-center gap-3 bg-gray-50/50 pl-4 pr-2 py-1.5 rounded-2xl border border-gray-100">
-                  <div className="text-right hidden sm:block">
+                <div className="flex items-center gap-2 md:gap-3 bg-gray-50/50 pl-3 md:pl-4 pr-2 py-1.5 rounded-2xl border border-gray-100">
+                  <div className="text-right hidden md:block">
                     <p className="text-[10px] font-black text-gray-900 leading-none uppercase italic">{user.name}</p>
                     <p className="text-[8px] font-bold text-[#00804D] uppercase tracking-tighter">
                       {user.role} <span className="text-gray-300">•</span> {user.dept}
                     </p>
                   </div>
                   
-                  {/* AVATAR CLICKABLE UNTUK EDIT AKUN */}
                   <button 
                     onClick={() => {
                       setEditData({ name: user?.name, newPassword: '' });
                       setIsModalOpen(true);
                     }}
-                    className="h-9 w-9 bg-[#1e4890] rounded-xl flex items-center justify-center text-white font-black text-xs italic shadow-md border-2 border-white hover:scale-110 hover:bg-[#00804D] transition-all"
-                    title="Pengaturan Akun"
+                    className="h-8 w-8 md:h-9 md:w-9 bg-[#1e4890] rounded-xl flex items-center justify-center text-white font-black text-xs italic shadow-md border-2 border-white hover:scale-110 hover:bg-[#00804D] transition-all"
                   >
                     {user?.name?.charAt(0)}
                   </button>
 
                   <div className="w-[1px] h-6 bg-gray-200 mx-1"></div>
 
-                  <button 
-                    onClick={handleLogout}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-white rounded-xl transition-all active:scale-90"
-                    title="Logout"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
+                  <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-500 transition-all">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                   </button>
                 </div>
               ) : (
-                <Link href="/login" className="px-6 py-2 bg-[#00804D] text-white text-[10px] font-black rounded-xl hover:bg-[#00663d] transition-all shadow-lg shadow-[#00804D]/20 uppercase italic">
-                  Login System
+                <Link href="/login" className="px-4 py-2 bg-[#00804D] text-white text-[9px] md:text-[10px] font-black rounded-xl hover:bg-[#00663d] transition-all shadow-lg uppercase italic">
+                  Login
                 </Link>
               )}
             </div>
           </div>
         </div>
+
+        {/* MOBILE DROPDOWN - MUNCUL SAAT isMobileMenuOpen TRUE */}
+        <div className={`lg:hidden transition-all duration-300 ease-in-out border-t border-gray-50 bg-white overflow-hidden ${isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className="px-4 pt-4 pb-6 space-y-2">
+            <MobileNavLink href="/" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/'}>Beranda</MobileNavLink>
+            <MobileNavLink href="/request" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/request'}>Buat Laporan</MobileNavLink>
+            <MobileNavLink href="/request/status" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/request/status'}>Status Saya</MobileNavLink>
+            {isAuthorizedSPV && (
+              <MobileNavLink href="/admin/DashboardSPV" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/admin/DashboardSPV'}>Dashboard SPV</MobileNavLink>
+            )}
+            <MobileNavLink href="/pic/DashboardPIC" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/pic/DashboardPIC'}>Tugas PIC</MobileNavLink>
+          </div>
+        </div>
       </nav>
 
-      {/* MODAL EDIT AKUN */}
+      {/* MODAL EDIT AKUN (KODE TETAP SAMA) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-black/40">
           <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-200">
@@ -178,49 +183,19 @@ export default function Navbar() {
             <form onSubmit={handleUpdateProfile} className="p-8 space-y-5">
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 ml-1">ID Karyawan (LOCKED)</label>
-                <input 
-                  type="text" 
-                  value={user?.nik || ''} 
-                  readOnly 
-                  className="w-full p-4 bg-gray-100 border-2 border-transparent rounded-2xl text-sm font-bold text-gray-400 cursor-not-allowed italic"
-                />
+                <input type="text" value={user?.nik || ''} readOnly className="w-full p-4 bg-gray-100 border-2 border-transparent rounded-2xl text-sm font-bold text-gray-400 cursor-not-allowed italic" />
               </div>
-
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 ml-1">Nama Lengkap</label>
-                <input 
-                  required
-                  type="text" 
-                  value={editData.name}
-                  onChange={(e) => setEditData({...editData, name: e.target.value})}
-                  className="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-[#00804D] focus:bg-white rounded-2xl outline-none transition-all font-bold text-sm"
-                />
+                <input required type="text" value={editData.name} onChange={(e) => setEditData({...editData, name: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-[#00804D] focus:bg-white rounded-2xl outline-none transition-all font-bold text-sm" />
               </div>
-
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 ml-1">Password Baru</label>
-                <input 
-                  type="password" 
-                  placeholder="Kosongkan jika tetap"
-                  value={editData.newPassword}
-                  onChange={(e) => setEditData({...editData, newPassword: e.target.value})}
-                  className="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-[#1e4890] focus:bg-white rounded-2xl outline-none transition-all font-bold text-sm placeholder:font-normal placeholder:text-gray-300"
-                />
+                <input type="password" placeholder="Kosongkan jika tetap" value={editData.newPassword} onChange={(e) => setEditData({...editData, newPassword: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-[#1e4890] focus:bg-white rounded-2xl outline-none transition-all font-bold text-sm placeholder:font-normal placeholder:text-gray-300" />
               </div>
-
               <div className="flex gap-3 pt-4">
-                <button 
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase text-gray-400 border-2 border-gray-100 hover:bg-gray-50 transition-all"
-                >
-                  Batal
-                </button>
-                <button 
-                  type="submit"
-                  disabled={isUpdating}
-                  className="flex-1 py-4 bg-[#00804D] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic shadow-lg shadow-[#00804D]/20 hover:bg-[#1e4890] transition-all disabled:bg-gray-200"
-                >
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase text-gray-400 border-2 border-gray-100 hover:bg-gray-50 transition-all">Batal</button>
+                <button type="submit" disabled={isUpdating} className="flex-1 py-4 bg-[#00804D] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic shadow-lg shadow-[#00804D]/20 hover:bg-[#1e4890] transition-all disabled:bg-gray-200">
                   {isUpdating ? 'MENYIMPAN...' : 'SIMPAN'}
                 </button>
               </div>
@@ -232,6 +207,7 @@ export default function Navbar() {
   );
 }
 
+// NavLink Desktop
 function NavLink({ href, children, active }) {
   return (
     <Link 
@@ -240,6 +216,23 @@ function NavLink({ href, children, active }) {
         active 
           ? 'bg-[#00804D] text-white shadow-md shadow-[#00804D]/20' 
           : 'text-gray-500 hover:bg-[#1e4890]/5 hover:text-[#1e4890]'
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+// MobileNavLink Dropdown
+function MobileNavLink({ href, children, active, onClick }) {
+  return (
+    <Link 
+      href={href} 
+      onClick={onClick}
+      className={`block px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+        active 
+          ? 'bg-[#00804D] text-white italic shadow-lg shadow-[#00804D]/10' 
+          : 'bg-gray-50 text-gray-500 hover:bg-[#1e4890]/5'
       }`}
     >
       {children}

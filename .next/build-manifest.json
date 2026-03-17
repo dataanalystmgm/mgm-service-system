@@ -27,20 +27,15 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/pic/DashboardPIC": [
+    "/admin/DashboardSPV": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/pic/DashboardPIC.js"
+      "static/chunks/pages/admin/DashboardSPV.js"
     ],
     "/request": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/request.js"
-    ],
-    "/request/status": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/request/status.js"
     ]
   },
   "ampFirstPages": []
