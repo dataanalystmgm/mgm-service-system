@@ -2,15 +2,53 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 import { db } from '@/lib/firebaseConfig';
-import { uploadToDrive } from '@/lib/uploadFile'; // Helper yang memanggil GAS
+import { uploadToDrive } from '@/lib/uploadFile';
 import { collection, addDoc, getDocs, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
+import Swal from 'sweetalert2'; 
+
+// Definisi Admin secara terpusat
+const ALLOWED_ADMINS = ["MGM 4329", "MGM 1111"];
+
+// --- HELPER UNTUK NOTIFIKASI MGM STYLE (UPDATED COLORS) ---
+const mgmNotify = {
+  success: (msg) => {
+    return Swal.fire({
+      icon: 'success',
+      title: '<span class="font-black italic tracking-tighter" style="color:#00804D">BERHASIL</span>',
+      text: msg,
+      confirmButtonColor: '#00804D',
+      customClass: {
+        popup: 'rounded-[2rem] border-b-8 border-[#00804D] shadow-2xl',
+        confirmButton: 'rounded-xl font-black px-8 py-3 uppercase text-[10px] tracking-widest'
+      }
+    });
+  },
+  error: (msg) => {
+    Swal.fire({
+      icon: 'error',
+      title: '<span class="text-red-600">GAGAL KIRIM</span>',
+      text: msg,
+      confirmButtonColor: '#1e4890',
+      customClass: { popup: 'rounded-[2rem]' }
+    });
+  },
+  loading: (msg) => {
+    Swal.fire({
+      title: msg,
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); },
+      customClass: { popup: 'rounded-[2rem]' }
+    });
+  }
+};
 
 export default function RequestForm() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  // State Utama Form
+  const isAuthorized = ALLOWED_ADMINS.includes(user?.nik);
+
   const [formData, setFormData] = useState({
     nama: '',
     nik: '',
@@ -19,27 +57,25 @@ export default function RequestForm() {
     tipe: '',
     deskripsi: '',
     deadline: '',
+    areaSpesifik: '', 
+    idMesin: '',      
     prioritas: 'tidak mendesak'
   });
 
-  // State UI & Data
   const [types, setTypes] = useState([]);
   const [newType, setNewType] = useState('');
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Load data awal (Tipe yang sudah ada & Auto-fill User)
+  const isMachineRelated = formData.tipe.toLowerCase().includes('mesin') || 
+                           formData.tipe.toLowerCase().includes('cutter') ||
+                           newType.toLowerCase().includes('mesin');
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "types"));
-        setTypes(querySnapshot.docs.map(doc => doc.data().name));
-      } catch (error) {
-        console.error("Gagal mengambil data tipe:", error);
-      }
-    };
-    fetchData();
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
 
     if (user) {
       setFormData(prev => ({
@@ -49,9 +85,18 @@ export default function RequestForm() {
         bagian: user.dept || ''
       }));
     }
-  }, [user]);
 
-  // 2. Handle Perubahan File & Preview
+    const fetchTypes = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "types"));
+        setTypes(querySnapshot.docs.map(doc => doc.data().name));
+      } catch (error) {
+        console.error("Gagal mengambil data tipe:", error);
+      }
+    };
+    fetchTypes();
+  }, [user, authLoading, router]);
+
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
@@ -60,153 +105,261 @@ export default function RequestForm() {
     }
   };
 
-  // 3. Proses Simpan ke Drive & Firestore
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    if (isSubmitting) return;
+    
+    mgmNotify.loading("Mengunggah data ke server...");
+    setIsSubmitting(true);
 
     try {
       let finalType = formData.tipe;
-
-      // Jika user menambahkan tipe barang baru
       if (formData.tipe === 'Lainnya' && newType) {
         await addDoc(collection(db, "types"), { name: newType });
         finalType = newType;
       }
 
-      // Upload ke Google Drive via Helper (GAS Bridge)
       let googleDriveUrl = "";
       if (file) {
         googleDriveUrl = await uploadToDrive(file);
       }
 
-      // Simpan record ke Firestore
+      const initialLog = {
+        status: 'pending',
+        timestamp: new Date().toISOString(),
+        updatedBy: user.name,
+        message: "Permintaan dibuat oleh user"
+      };
+
       await addDoc(collection(db, "requests"), {
         ...formData,
         tipe: finalType,
-        fotoUrl: googleDriveUrl, // Link dari Google Drive
+        idMesin: isMachineRelated ? formData.idMesin : "", 
+        fotoUrl: googleDriveUrl,
         status: 'pending',
-        userId: user?.uid || 'guest',
-        whatsapp: user?.whatsapp || '',
+        userId: user.uid,
+        email: user.email,
         createdAt: serverTimestamp(),
+        logs: [initialLog],
+        targetSelesai: formData.deadline 
       });
 
-      alert("Permintaan MGM Service Berhasil Terkirim!");
+      await mgmNotify.success("Laporan Anda berhasil dikirim ke Control Center MGM!");
       router.push('/request/status');
     } catch (error) {
-      console.error("Submission Error:", error);
-      alert("Gagal mengirim data. Pastikan koneksi internet stabil.");
+      console.error("Error submitting request:", error);
+      mgmNotify.error("Terjadi masalah saat mengirim. Cek koneksi Anda.");
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
+  if (authLoading || !user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+        <div className="w-12 h-1 bg-gray-200 overflow-hidden mb-4 rounded-full">
+          <div className="w-full h-full bg-[#00804D] animate-[loading_1.5s_ease-in-out_infinite]"></div>
+        </div>
+        <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.4em]">MGM.OS LOADING</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-3xl mx-auto my-8 bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
-      {/* Header Branding MGM */}
-      <div className="bg-gradient-to-r from-red-700 to-red-600 p-6 text-white text-center">
-        <h1 className="text-2xl font-bold uppercase tracking-wider">Form Pelayanan MGM</h1>
-        <p className="text-red-100 text-sm opacity-90">PT. Mercindo Global Manufaktur - Internal Service System</p>
+    <div className="max-w-3xl mx-auto my-10 p-4 font-sans selection:bg-[#00804D]/10">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100 transition-all hover:shadow-[#1e4890]/5">
+        
+        {/* HEADER - CORPORATE BLUE BASE */}
+        <div className="bg-[#9ef3c6a3] p-10 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#00804D] opacity-10 rounded-full -mr-20 -mt-20"></div>
+          <div className="relative z-10 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-black uppercase tracking-tighter italic leading-none">MGM Service<br/><span className="text-[#00804D]">Request</span></h1>
+              <p className="text-black/50 text-[10px] font-bold tracking-[0.3em] mt-3 uppercase">Asset Management System</p>
+            </div>
+            {isAuthorized && (
+              <div className="bg-[#00804D] px-4 py-2 rounded-full shadow-lg shadow-black/20 border border-white/20">
+                <span className="text-[9px] font-black tracking-widest uppercase italic">Admin Active</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-8 space-y-10">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 shadow-inner group transition-all hover:bg-white hover:border-[#1e4890]/20">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">User Pemohon</label>
+              <p className="text-sm font-bold text-gray-800">{formData.nama}</p>
+              <p className="text-[10px] text-[#1e4890] font-black italic mt-1">{formData.nik}</p>
+            </div>
+            <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 shadow-inner group transition-all hover:bg-white hover:border-[#00804D]/20">
+              <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Departemen</label>
+              <p className="text-sm font-bold text-gray-800">{formData.bagian}</p>
+              <div className="w-4 h-1 bg-[#00804D] mt-2 rounded-full"></div>
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            <div className="flex items-center gap-4">
+                <h2 className="text-xs font-black text-gray-900 uppercase tracking-widest">Detail Permintaan</h2>
+                <div className="h-px bg-gray-100 flex-1"></div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-[#1e4890] uppercase tracking-tighter">Jenis Keperluan</label>
+                <select 
+                  value={formData.keperluan} 
+                  onChange={(e) => setFormData({...formData, keperluan: e.target.value})}
+                  className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl text-sm font-bold focus:border-[#1e4890] outline-none transition-all shadow-sm"
+                >
+                  <option value="perbaikan">Perbaikan Kerusakan</option>
+                  <option value="pengadaan">Pengadaan Barang Baru</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-[#1e4890] uppercase tracking-tighter">Tipe Barang / Mesin</label>
+                <select 
+                  required 
+                  value={formData.tipe} 
+                  onChange={(e) => setFormData({...formData, tipe: e.target.value, idMesin: ''})} 
+                  className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl text-sm font-bold focus:border-[#1e4890] outline-none transition-all shadow-sm"
+                >
+                  <option value="">Pilih Tipe</option>
+                  {types.map((t, i) => <option key={i} value={t}>{t}</option>)}
+                  <option value="Lainnya" className="font-black text-[#00804D] italic">+ Tambah Tipe Baru</option>
+                </select>
+              </div>
+            </div>
+
+            {formData.tipe === 'Lainnya' && (
+              <div className="bg-[#00804D]/5 p-6 rounded-[2rem] border-2 border-[#00804D]/20 animate-in fade-in slide-in-from-top-2">
+                <label className="text-[10px] font-black text-[#00804D] uppercase italic tracking-widest mb-2 block">Input Nama Tipe Baru</label>
+                <input 
+                  type="text" 
+                  value={newType} 
+                  onChange={(e) => setNewType(e.target.value)}
+                  className="w-full bg-transparent border-b-2 border-[#00804D] outline-none py-2 text-sm font-black text-[#1e4890] placeholder:text-gray-300"
+                  placeholder="Ketik nama tipe di sini..."
+                />
+              </div>
+            )}
+
+            {isMachineRelated && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                <label className="text-[11px] font-black text-[#00804D] uppercase tracking-widest">ID Mesin / No. Asset</label>
+                <input 
+                  required
+                  type="text"
+                  value={formData.idMesin}
+                  onChange={(e) => setFormData({...formData, idMesin: e.target.value.toUpperCase()})}
+                  className="w-full p-4 bg-[#00804D]/5 border-2 border-[#00804D]/10 rounded-2xl text-sm font-black text-[#00804D] focus:border-[#00804D] outline-none placeholder:text-[#00804D]/20"
+                  placeholder="CONTOH: MAC-SEW-01"
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-[#1e4890] uppercase tracking-tighter">Area Spesifik (Lokasi)</label>
+              <input 
+                required
+                type="text"
+                value={formData.areaSpesifik}
+                onChange={(e) => setFormData({...formData, areaSpesifik: e.target.value})}
+                className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl text-sm font-bold focus:border-[#1e4890] outline-none transition-all shadow-sm"
+                placeholder="Line 15, Gedung A Lantai 2, Area Packing"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-[#1e4890] uppercase tracking-tighter">Lampiran Foto Lapangan</label>
+              <div className="flex items-center gap-6 p-6 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 group hover:border-[#00804D]/50 transition-colors">
+                <div className="relative w-24 h-24 bg-white rounded-2xl border-2 border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
+                  {previewUrl ? (
+                    <Image src={previewUrl} alt="Preview" fill className="object-cover" />
+                  ) : (
+                    <svg className="w-10 h-10 text-gray-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  )}
+                </div>
+                <div className="flex-1">
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Pilih Gambar Masalah</p>
+                    <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleFileChange}
+                    className="text-[10px] text-gray-500 file:mr-4 file:py-2 file:px-6 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:bg-[#1e4890] file:text-white hover:file:bg-[#00804D] cursor-pointer"
+                    />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-[#1e4890] uppercase tracking-tighter">Deskripsi Masalah</label>
+              <textarea 
+                required 
+                rows="4" 
+                value={formData.deskripsi} 
+                onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
+                className="w-full p-5 bg-white border-2 border-gray-100 rounded-3xl text-sm font-medium focus:border-[#00804D] transition-all outline-none resize-none shadow-sm"
+                placeholder="Berikan rincian kendala..."
+              ></textarea>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-[#1e4890] uppercase tracking-tighter">Target Selesai</label>
+                <input 
+                  required 
+                  type="datetime-local"
+                  value={formData.deadline} 
+                  onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                  className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl text-sm font-bold focus:border-[#00804D] outline-none transition-all shadow-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-[#1e4890] uppercase tracking-tighter">Tingkat Prioritas</label>
+                <div className="flex gap-2">
+                  {['tidak mendesak', 'mendesak'].map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setFormData({...formData, prioritas: p})}
+                      className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${
+                        formData.prioritas === p 
+                          ? 'bg-[#00804D] border-[#00804D] text-white shadow-lg shadow-[#00804D]/20' 
+                          : 'border-gray-100 bg-gray-50 text-gray-300 hover:border-[#1e4890]/30'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={isSubmitting}
+            className={`w-full py-5 rounded-3xl text-[11px] font-black uppercase tracking-[0.3em] transition-all shadow-2xl italic ${
+              isSubmitting 
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                : 'bg-[#00804D] text-white hover:bg-[#1e4890] hover:scale-[1.01] active:scale-[0.98] shadow-[#00804D]/20'
+            }`}
+          >
+            {isSubmitting ? "TRANSMITTING DATA..." : "SUBMIT REPORT TO CONTROL CENTER"}
+          </button>
+        </form>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-8 space-y-6">
-        
-        {/* Section 1: Identitas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-1">
-            <label className="text-xs font-bold text-gray-500 uppercase">Nomor Induk Karyawan (NIK)</label>
-            <input required type="text" value={formData.nik} onChange={(e) => setFormData({...formData, nik: e.target.value})} className="w-full mt-1 p-3 border-b-2 border-gray-200 focus:border-red-500 outline-none transition-colors" placeholder="MGMXXXX" />
-          </div>
-          <div className="md:col-span-2">
-            <label className="text-xs font-bold text-gray-500 uppercase">Nama Lengkap</label>
-            <input required type="text" value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} className="w-full mt-1 p-3 border-b-2 border-gray-200 focus:border-red-500 outline-none transition-colors" />
-          </div>
-        </div>
-
-        <div>
-          <label className="text-xs font-bold text-gray-500 uppercase">Bagian / Departemen</label>
-          <input required type="text" value={formData.bagian} onChange={(e) => setFormData({...formData, bagian: e.target.value})} className="w-full mt-1 p-3 border-b-2 border-gray-200 focus:border-red-500 outline-none transition-colors" />
-        </div>
-
-        <hr className="border-gray-100" />
-
-        {/* Section 2: Detail Keperluan */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase">Keperluan</label>
-            <select value={formData.keperluan} onChange={(e) => setFormData({...formData, keperluan: e.target.value})} className="w-full mt-1 p-3 bg-gray-50 rounded-lg border-none focus:ring-2 focus:ring-red-500">
-              <option value="pengadaan">Pengadaan Barang Baru</option>
-              <option value="perbaikan">Perbaikan Kerusakan</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase">Tipe (Mesin/Alat/Fasilitas)</label>
-            <select required value={formData.tipe} onChange={(e) => setFormData({...formData, tipe: e.target.value})} className="w-full mt-1 p-3 bg-gray-50 rounded-lg border-none focus:ring-2 focus:ring-red-500">
-              <option value="">Pilih Opsi</option>
-              {types.map((t, i) => <option key={i} value={t}>{t}</option>)}
-              <option value="Lainnya">+ Tambah Tipe Baru</option>
-            </select>
-          </div>
-        </div>
-
-        {formData.tipe === 'Lainnya' && (
-          <div className="bg-red-50 p-4 rounded-lg animate-pulse border border-red-100">
-            <label className="text-xs font-bold text-red-700 uppercase">Nama Tipe Baru</label>
-            <input type="text" value={newType} onChange={(e) => setNewType(e.target.value)} placeholder="Tulis nama mesin/fasilitas baru..." className="w-full mt-1 p-2 bg-transparent border-b border-red-300 outline-none" />
-          </div>
-        )}
-
-        {/* Section 3: Lampiran Foto (Drive Storage) */}
-        <div>
-          <label className="text-xs font-bold text-gray-500 uppercase">Lampiran Foto (Upload ke Google Drive)</label>
-          <div className="mt-3 flex items-center gap-6">
-            <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center bg-gray-50 overflow-hidden">
-              {previewUrl ? (
-                <Image src={previewUrl} alt="Preview" fill className="object-cover" />
-              ) : (
-                <div className="text-gray-300 text-center flex flex-col items-center">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" /></svg>
-                  <span className="text-[10px] mt-1">Belum Ada Foto</span>
-                </div>
-              )}
-            </div>
-            <div className="flex-1">
-              <input type="file" accept="image/*" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-red-50 hover:file:text-red-700 cursor-pointer" />
-              <p className="text-[10px] text-gray-400 mt-2 italic">*Foto otomatis masuk ke folder Drive MGM</p>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-xs font-bold text-gray-500 uppercase">Deskripsi Masalah / Alasan Pengadaan</label>
-          <textarea required rows="4" value={formData.deskripsi} onChange={(e) => setFormData({...formData, deskripsi: e.target.value})} className="w-full mt-2 p-3 bg-gray-50 rounded-lg outline-none focus:ring-2 focus:ring-red-500" placeholder="Jelaskan detail kerusakan atau barang yang dibutuhkan..."></textarea>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase">Tanggal Permintaan Selesai</label>
-            <input required type="date" value={formData.deadline} onChange={(e) => setFormData({...formData, deadline: e.target.value})} className="w-full mt-1 p-3 bg-gray-50 rounded-lg outline-none focus:ring-2 focus:ring-red-500" />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase">Tingkat Prioritas</label>
-            <div className="flex mt-2 gap-4">
-              {['tidak mendesak', 'mendesak'].map((p) => (
-                <button key={p} type="button" onClick={() => setFormData({...formData, prioritas: p})} className={`flex-1 py-2 px-4 rounded-full text-xs font-bold uppercase border-2 transition-all ${formData.prioritas === p ? 'bg-red-600 border-red-600 text-white' : 'border-gray-200 text-gray-400'}`}>
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <button 
-          type="submit" 
-          disabled={loading}
-          className={`w-full py-4 rounded-xl font-bold uppercase tracking-widest text-white transition-all shadow-lg ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 active:scale-95'}`}
-        >
-          {loading ? "Menyimpan ke Google Drive..." : "Kirim Permintaan Ke SPV"}
-        </button>
-      </form>
+      <style jsx>{`
+        @keyframes loading {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </div>
   );
 }
