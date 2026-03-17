@@ -10,7 +10,7 @@ import Swal from 'sweetalert2';
 // Definisi Admin secara terpusat
 const ALLOWED_ADMINS = ["MGM 4329", "MGM 1111"];
 
-// --- HELPER UNTUK NOTIFIKASI MGM STYLE (UPDATED COLORS) ---
+// --- HELPER UNTUK NOTIFIKASI MGM STYLE ---
 const mgmNotify = {
   success: (msg) => {
     return Swal.fire({
@@ -68,9 +68,13 @@ export default function RequestForm() {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isMachineRelated = formData.tipe.toLowerCase().includes('mesin') || 
-                           formData.tipe.toLowerCase().includes('cutter') ||
-                           newType.toLowerCase().includes('mesin');
+  // LOGIKA: ID Mesin muncul HANYA JIKA keperluan perbaikan DAN tipe mengandung unsur mesin/cutter
+  const isMachineRelated = 
+    formData.keperluan === 'perbaikan' && (
+      formData.tipe.toLowerCase().includes('mesin') || 
+      formData.tipe.toLowerCase().includes('cutter') ||
+      newType.toLowerCase().includes('mesin')
+    );
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -128,7 +132,7 @@ export default function RequestForm() {
         status: 'pending',
         timestamp: new Date().toISOString(),
         updatedBy: user.name,
-        message: "Permintaan dibuat oleh user"
+        message: formData.keperluan === 'pengadaan' ? "Pengajuan pengadaan baru dibuat" : "Laporan perbaikan dibuat"
       };
 
       await addDoc(collection(db, "requests"), {
@@ -144,7 +148,7 @@ export default function RequestForm() {
         targetSelesai: formData.deadline 
       });
 
-      await mgmNotify.success("Laporan Anda berhasil dikirim ke Control Center MGM!");
+      await mgmNotify.success("Data berhasil terkirim ke sistem MGM!");
       router.push('/request/status');
     } catch (error) {
       console.error("Error submitting request:", error);
@@ -169,12 +173,12 @@ export default function RequestForm() {
     <div className="max-w-3xl mx-auto my-10 p-4 font-sans selection:bg-[#00804D]/10">
       <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100 transition-all hover:shadow-[#1e4890]/5">
         
-        {/* HEADER - CORPORATE BLUE BASE */}
+        {/* HEADER */}
         <div className="bg-[#9ef3c6a3] p-10 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#00804D] opacity-10 rounded-full -mr-20 -mt-20"></div>
           <div className="relative z-10 flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-black uppercase tracking-tighter italic leading-none">MGM Service<br/><span className="text-[#00804D]">Request</span></h1>
+              <h1 className="text-3xl font-black text-black uppercase tracking-tighter italic leading-none">MGM Service<br/><span className="text-[#00804D]">Request</span></h1>
               <p className="text-black/50 text-[10px] font-bold tracking-[0.3em] mt-3 uppercase">Asset Management System</p>
             </div>
             {isAuthorized && (
@@ -188,12 +192,12 @@ export default function RequestForm() {
         <form onSubmit={handleSubmit} className="p-8 space-y-10">
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 shadow-inner group transition-all hover:bg-white hover:border-[#1e4890]/20">
+            <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 shadow-inner">
               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">User Pemohon</label>
               <p className="text-sm font-bold text-gray-800">{formData.nama}</p>
               <p className="text-[10px] text-[#1e4890] font-black italic mt-1">{formData.nik}</p>
             </div>
-            <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 shadow-inner group transition-all hover:bg-white hover:border-[#00804D]/20">
+            <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 shadow-inner">
               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Departemen</label>
               <p className="text-sm font-bold text-gray-800">{formData.bagian}</p>
               <div className="w-4 h-1 bg-[#00804D] mt-2 rounded-full"></div>
@@ -247,6 +251,7 @@ export default function RequestForm() {
               </div>
             )}
 
+            {/* ID MESIN HANYA MUNCUL JIKA PERBAIKAN & TIPE MESIN */}
             {isMachineRelated && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
                 <label className="text-[11px] font-black text-[#00804D] uppercase tracking-widest">ID Mesin / No. Asset</label>
@@ -274,7 +279,9 @@ export default function RequestForm() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-black text-[#1e4890] uppercase tracking-tighter">Lampiran Foto Lapangan</label>
+              <label className="text-[11px] font-black text-[#1e4890] uppercase tracking-tighter">
+                {formData.keperluan === 'pengadaan' ? 'Lampiran Foto Pengajuan (Optional)' : 'Lampiran Foto Lapangan'}
+              </label>
               <div className="flex items-center gap-6 p-6 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 group hover:border-[#00804D]/50 transition-colors">
                 <div className="relative w-24 h-24 bg-white rounded-2xl border-2 border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
                   {previewUrl ? (
@@ -284,7 +291,7 @@ export default function RequestForm() {
                   )}
                 </div>
                 <div className="flex-1">
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Pilih Gambar Masalah</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Pilih Gambar</p>
                     <input 
                     type="file" 
                     accept="image/*" 
@@ -296,14 +303,16 @@ export default function RequestForm() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-black text-[#1e4890] uppercase tracking-tighter">Deskripsi Masalah</label>
+              <label className="text-[11px] font-black text-[#1e4890] uppercase tracking-tighter">
+                {formData.keperluan === 'pengadaan' ? 'Deskripsi Pengajuan' : 'Deskripsi Masalah'}
+              </label>
               <textarea 
                 required 
                 rows="4" 
                 value={formData.deskripsi} 
                 onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
                 className="w-full p-5 bg-white border-2 border-gray-100 rounded-3xl text-sm font-medium focus:border-[#00804D] transition-all outline-none resize-none shadow-sm"
-                placeholder="Berikan rincian kendala..."
+                placeholder={formData.keperluan === 'pengadaan' ? "Sebutkan rincian barang/unit yang dibutuhkan..." : "Berikan rincian kendala..."}
               ></textarea>
             </div>
 

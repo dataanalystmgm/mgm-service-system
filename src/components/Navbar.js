@@ -12,6 +12,10 @@ export default function Navbar() {
   const { user } = useAuth();
   const router = useRouter();
   
+  // LOGIKA OTORISASI DASHBOARD SPV
+  const SUPER_ADMIN_ID = ["MGM 4329", "MGM 1111"];
+  const isAuthorizedSPV = user && SUPER_ADMIN_ID.includes(user.nik);
+
   // State untuk Edit Akun
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -104,12 +108,12 @@ export default function Navbar() {
                 <NavLink href="/request" active={router.pathname === '/request'}>Buat Laporan</NavLink>
                 <NavLink href="/request/status" active={router.pathname === '/request/status'}>Status Saya</NavLink>
                 
-                {user?.role === 'SPV' && (
+                {/* LOGIKA PENYEMBUNYIAN DASHBOARD SPV */}
+                {isAuthorizedSPV && (
                   <NavLink href="/admin/DashboardSPV" active={router.pathname === '/admin/DashboardSPV'}>Dashboard SPV</NavLink>
                 )}
-                {user?.role === 'PIC' && (
-                  <NavLink href="/pic/DashboardPIC" active={router.pathname === '/pic/DashboardPIC'}>Tugas PIC</NavLink>
-                )}
+                
+                <NavLink href="/pic/DashboardPIC" active={router.pathname === '/pic/DashboardPIC'}>Tugas PIC</NavLink>
               </div>
             </div>
 
@@ -157,7 +161,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* MODAL EDIT AKUN (UI DISESUAIKAN DENGAN AKSEN MGM) */}
+      {/* MODAL EDIT AKUN */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-black/40">
           <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-200">
@@ -172,7 +176,6 @@ export default function Navbar() {
             </div>
 
             <form onSubmit={handleUpdateProfile} className="p-8 space-y-5">
-              {/* ID KARYAWAN - LOCKED */}
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 ml-1">ID Karyawan (LOCKED)</label>
                 <input 
@@ -183,7 +186,6 @@ export default function Navbar() {
                 />
               </div>
 
-              {/* EDIT NAMA */}
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 ml-1">Nama Lengkap</label>
                 <input 
@@ -195,7 +197,6 @@ export default function Navbar() {
                 />
               </div>
 
-              {/* EDIT PASSWORD */}
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 ml-1">Password Baru</label>
                 <input 

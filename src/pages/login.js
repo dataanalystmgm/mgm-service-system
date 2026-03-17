@@ -58,7 +58,7 @@ export default function Login() {
               width={180} 
               height={60} 
               priority={true}
-              className='mx-auto brightness-0 invert' // Membuat logo menjadi putih agar kontras dengan biru
+              className='mx-auto' // Membuat logo menjadi putih agar kontras dengan biru
             />
         </div>
 

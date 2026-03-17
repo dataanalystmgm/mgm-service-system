@@ -2,8 +2,9 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
+  "/login": "pages/login.js",
   "/": "pages/index.js",
   "/pic/DashboardPIC": "pages/pic/DashboardPIC.js",
-  "/request": "pages/request.js",
-  "/admin/DashboardSPV": "pages/admin/DashboardSPV.js"
+  "/request/status": "pages/request/status.js",
+  "/request": "pages/request.js"
 }

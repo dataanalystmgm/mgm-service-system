@@ -130,6 +130,10 @@ export default function DashboardSPV() {
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState(null); 
   const [showPicMaster, setShowPicMaster] = useState(false);
+  
+  // State Filter
+  const [filterDate, setFilterDate] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const SUPER_ADMIN_ID = ["MGM 4329", "MGM 1111"];
   const isAuthorized = SUPER_ADMIN_ID.includes(user?.nik);
@@ -206,6 +210,22 @@ export default function DashboardSPV() {
     }
   };
 
+  // LOGIKA FILTER
+  const filteredRequests = requests.filter(req => {
+    const searchLower = searchQuery.toLowerCase();
+    const reqDate = req.createdAt?.toDate ? req.createdAt.toDate().toISOString().split('T')[0] : "";
+    
+    const matchesDate = filterDate === "" || reqDate === filterDate;
+    const matchesSearch = searchQuery === "" || 
+      req.tipe?.toLowerCase().includes(searchLower) ||
+      req.deskripsi?.toLowerCase().includes(searchLower) ||
+      req.nama?.toLowerCase().includes(searchLower) ||
+      req.picId?.toLowerCase().includes(searchLower) ||
+      req.areaSpesifik?.toLowerCase().includes(searchLower);
+
+    return matchesDate && matchesSearch;
+  });
+
   if (loading || authLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00804D]"></div></div>;
 
   return (
@@ -213,13 +233,33 @@ export default function DashboardSPV() {
       <div className="max-w-[1600px] mx-auto">
         
         {/* HEADER */}
-        <header className="mb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-2">
+        <header className="mb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-2 border-b border-gray-200 pb-4">
           <div>
             <h1 className="text-xl font-black text-gray-900 tracking-tighter italic uppercase leading-none">
               MGM <span className="text-[#00804D]">CONTROL</span> CENTER
             </h1>
             <p className="text-[8px] font-bold text-[#1e4890] uppercase tracking-[0.3em]">Supervisor Dashboard</p>
           </div>
+
+          {/* FILTER AREA */}
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+              <input 
+                type="date" 
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                className="bg-white px-3 py-1.5 rounded-xl border border-gray-200 text-[10px] font-black uppercase outline-none focus:border-[#00804D] shadow-sm"
+              />
+              <div className="relative flex-1 md:flex-none">
+                <input 
+                  type="text" 
+                  placeholder="Search Area, Tipe, User, PIC..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full md:w-64 bg-white px-3 py-1.5 rounded-xl border border-gray-200 text-[10px] font-bold outline-none focus:border-[#00804D] shadow-sm"
+                />
+              </div>
+          </div>
+
           <div className="flex items-center gap-2">
             {isAuthorized && (
               <button onClick={() => setShowPicMaster(!showPicMaster)} className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase border transition-all ${showPicMaster ? 'bg-[#00804D] text-white border-[#00663d]' : 'bg-white text-gray-900 shadow-sm'}`}>
@@ -253,9 +293,9 @@ export default function DashboardSPV() {
           </div>
         )}
 
-        {/* GRID 5 KOLOM */}
+        {/* GRID MONITOR */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {requests.map((req) => {
+          {filteredRequests.map((req) => {
             const isEditing = editId === req.id || req.status === 'pending';
             const currentStatus = req.status?.toUpperCase();
             const isFinal = currentStatus === "SUDAH DIVALIDASI USER" || currentStatus === "SUDAH SELESAI";
@@ -284,13 +324,19 @@ export default function DashboardSPV() {
                     )}
                   </div>
 
-                  {/* TYPE & DESCRIPTION */}
+                  {/* TYPE, AREA & DESCRIPTION */}
                   <div className="mb-2">
-                    <span className="text-[7px] font-black bg-[#1e4890] text-white px-1.5 py-0.5 rounded uppercase tracking-widest">{req.tipe}</span>
+                    <div className="flex flex-wrap gap-1 items-center mb-1">
+                      <span className="text-[7px] font-black bg-[#1e4890] text-white px-1.5 py-0.5 rounded uppercase tracking-widest">{req.tipe}</span>
+                      {/* PENAMBAHAN AREA SPESIFIK */}
+                      <span className="text-[7px] font-black bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded uppercase border border-gray-300">
+                        {req.areaSpesifik || 'General'}
+                      </span>
+                    </div>
                     <h3 className="text-[9px] font-black text-gray-900 uppercase leading-tight mt-1 line-clamp-2 min-h-[1.6rem] italic">{req.deskripsi}</h3>
                   </div>
 
-                  {/* COUNTDOWNS DENGAN AKSEN BIRU */}
+                  {/* COUNTDOWNS */}
                   <div className="flex gap-1 mb-2 p-1 bg-gray-50 rounded-xl border border-gray-100">
                     <CountdownTimer label="INT" targetDate={req.targetSelesai} status={req.status} />
                     <CountdownTimer label="USR" targetDate={req.deadline} status={req.status} />
@@ -339,6 +385,14 @@ export default function DashboardSPV() {
             );
           })}
         </div>
+        
+        {/* EMPTY STATE */}
+        {filteredRequests.length === 0 && (
+          <div className="text-center py-20">
+            <p className="text-gray-400 font-black italic uppercase tracking-widest text-[10px]">No Matching Requests Found</p>
+          </div>
+        )}
+
       </div>
       {selectedTask && <ImageModal task={selectedTask} onClose={() => setSelectedTask(null)} />}
     </div>

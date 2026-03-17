@@ -198,7 +198,7 @@ export default function RequestStatus() {
       <div className="max-w-7xl mx-auto">
         <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-4 border-[#1e4890] pb-8">
           <div>
-            <h1 className="text-6xl font-black text-[#1e4890] tracking-tighter italic uppercase leading-[0.8]">Status<br/><span className="text-[#00804D]">Monitor</span></h1>
+            <h1 className="text-3xl font-black text-[#1e4890] tracking-tighter italic uppercase leading-[0.8]">Status<br/><span className="text-[#00804D]">Monitor</span></h1>
             <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.4em] mt-4 flex items-center gap-2">
                 <span className="w-2 h-2 bg-[#00804D] rounded-full"></span> Asset Performance Tracking
             </p>
@@ -209,7 +209,6 @@ export default function RequestStatus() {
           </div>
         </header>
 
-        {/* --- TOGGLE VIEW MODE (CORPORATE ACCENT) --- */}
         <div className="flex flex-wrap items-center justify-between mb-10 gap-4">
           <div className="flex bg-white p-1 rounded-2xl border-2 border-[#1e4890]/20 shadow-sm">
             <button 
@@ -235,116 +234,122 @@ export default function RequestStatus() {
         </div>
 
         {myRequests.length === 0 ? (
-          <div className="text-center py-32 bg-white rounded-[3rem] border-4 border-dashed border-gray-200">
-            <div className="text-5xl mb-4 opacity-20 text-[#1e4890]">📊</div>
-            <p className="text-gray-400 font-black uppercase tracking-widest text-sm italic">Queue is Empty</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {myRequests.map(req => {
-              const isOwner = req.nik === user?.nik;
-              const isEditable = isOwner && req.status !== 'sudah divalidasi user' && req.status !== 'sudah selesai';
-              const isFinished = req.status === 'sudah divalidasi user';
+  <div className="text-center py-32 bg-white rounded-[3rem] border-4 border-dashed border-gray-200">
+    <div className="text-5xl mb-4 opacity-20 text-[#1e4890]">📊</div>
+    <p className="text-gray-400 font-black uppercase tracking-widest text-sm italic">Queue is Empty</p>
+  </div>
+) : (
+  /* PERUBAHAN DISINI: grid-cols-1 (mobile), md:grid-cols-2 (tablet), lg:grid-cols-4 (desktop) */
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    {myRequests.map(req => {
+      const isOwner = req.nik === user?.nik;
+      const isEditable = isOwner && req.status !== 'sudah divalidasi user' && req.status !== 'sudah selesai';
+      const isFinished = req.status === 'sudah divalidasi user';
+      
+      const requestDate = req.createdAt?.seconds 
+        ? new Date(req.createdAt.seconds * 1000).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : 'Pending';
 
-              return (
-                <div key={req.id} className={`group bg-white rounded-[2.5rem] border-2 border-transparent hover:border-[#1e4890]/30 transition-all duration-500 flex flex-col relative overflow-hidden shadow-sm hover:shadow-2xl ${isFinished ? 'opacity-60 grayscale' : ''}`}>
-                  
-                  {/* MGM LABEL ACCENT */}
-                  <div className={`absolute top-0 right-10 h-12 w-8 ${req.prioritas === 'mendesak' ? 'bg-red-600' : 'bg-[#1e4890]'} clip-path-label shadow-lg`}></div>
+      return (
+        /* Padding dikurangi dari p-8 menjadi p-6 agar konten tidak terlalu sesak */
+        <div key={req.id} className={`group bg-white rounded-[2rem] border-2 border-transparent hover:border-[#1e4890]/30 transition-all duration-500 flex flex-col relative overflow-hidden shadow-sm hover:shadow-2xl ${isFinished ? 'opacity-60 grayscale' : ''}`}>
+          
+          <div className={`absolute top-0 right-6 h-10 w-6 ${req.prioritas === 'mendesak' ? 'bg-red-600' : 'bg-[#1e4890]'} clip-path-label shadow-lg`}></div>
 
-                  <div className="p-8 flex-1 flex flex-col">
-                    <div className="flex justify-between items-start mb-6">
-                      <span className="text-[10px] font-black text-gray-300 tabular-nums">ID-{req.id.substring(0, 8).toUpperCase()}</span>
+          <div className="p-6 flex-1 flex flex-col">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex flex-col">
+                 <span className="text-[9px] font-black text-gray-300 tabular-nums uppercase tracking-tighter italic">ID-{req.id.substring(0, 8).toUpperCase()}</span>
+                 <span className="text-[7px] font-bold text-[#1e4890] uppercase tracking-widest mt-0.5">{requestDate}</span>
+              </div>
+            </div>
+
+            {/* Ukuran font judul dikurangi dari text-xl menjadi text-lg */}
+            <h3 className="text-lg font-black text-[#1e4890] uppercase tracking-tighter mb-3 leading-tight group-hover:text-[#00804D] transition-colors">{req.tipe}</h3>
+            
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {req.idMesin && (
+                <span className="bg-[#00804D] text-white px-2.5 py-0.5 rounded-full text-[8px] font-black italic tracking-tighter">
+                  {req.idMesin}
+                </span>
+              )}
+              <span className="bg-gray-100 text-gray-500 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border border-gray-200">
+                {req.areaSpesifik || 'General'}
+              </span>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 mb-4 flex-1">
+                <p className="text-[11px] text-gray-600 font-medium leading-relaxed italic">"{req.deskripsi}"</p>
+            </div>
+
+            <div className="mb-3 flex items-center gap-2 px-1">
+                <div className="w-1 h-1 bg-[#1e4890] rounded-full"></div>
+                <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">By: <span className="text-[#00804D]">{req.nama || 'Anon'}</span></p>
+            </div>
+
+            {/* Status badge sedikit lebih ramping */}
+            <div className={`w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-center mb-4 transition-all border-2 ${
+              req.status === 'sudah divalidasi user' ? 'bg-gray-100 text-gray-400 border-transparent' :
+              req.status === 'sudah selesai' ? 'bg-[#00804D]/10 text-[#00804D] border-[#00804D]/20 shadow-lg shadow-[#00804D]/10' :
+              req.status === 'sedang dikerjakan' ? 'bg-[#1e4890]/10 text-[#1e4890] border-[#1e4890]/20' :
+              'bg-amber-50 text-amber-700 border-amber-200'
+            }`}>
+              {req.status}
+            </div>
+
+            {req.picId && (
+              <div className="flex justify-between items-center px-1 mb-4">
+                <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest">In Charge:</span>
+                <span className="text-[9px] font-black text-[#1e4890] uppercase underline decoration-[#00804D] decoration-2 underline-offset-4">{req.picId}</span>
+              </div>
+            )}
+
+            {isEditable && (
+              <div className="mt-auto">
+                {editingId === req.id ? (
+                  <div className="space-y-2 animate-in fade-in zoom-in-95">
+                    <input 
+                      type="datetime-local" 
+                      className="w-full text-[10px] font-black p-2 rounded-lg border-2 border-[#1e4890] outline-none"
+                      onChange={(e) => setNewTargetDate(e.target.value)}
+                    />
+                    <div className="flex gap-2 pt-1">
+                      <button onClick={() => handleUpdateTarget(req.id)} className="flex-1 bg-[#1e4890] text-white text-[8px] font-black py-2 rounded-lg hover:bg-[#00804D]">SAVE</button>
+                      <button onClick={() => setEditingId(null)} className="flex-1 bg-gray-100 text-gray-500 text-[8px] font-black py-2 rounded-lg">CANCEL</button>
                     </div>
-
-                    <h3 className="text-xl font-black text-[#1e4890] uppercase tracking-tighter mb-4 leading-none group-hover:text-[#00804D] transition-colors">{req.tipe}</h3>
-                    
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {req.idMesin && (
-                        <span className="bg-[#00804D] text-white px-3 py-1 rounded-full text-[9px] font-black italic tracking-tighter">
-                          {req.idMesin}
-                        </span>
-                      )}
-                      <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-gray-200">
-                        {req.areaSpesifik || 'General'}
-                      </span>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 mb-6 flex-1">
-                        <p className="text-xs text-gray-600 font-medium leading-relaxed italic">"{req.deskripsi}"</p>
-                    </div>
-
-                    {isTeamView && !isOwner && (
-                      <div className="mb-4 flex items-center gap-2 px-1">
-                         <div className="w-1.5 h-1.5 bg-[#00804D] rounded-full"></div>
-                         <p className="text-[9px] font-black text-gray-400 uppercase">Requester: <span className="text-[#1e4890]">{req.nama}</span></p>
-                      </div>
-                    )}
-
-                    {/* STATUS BADGE - REFINED COLORS */}
-                    <div className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.25em] text-center mb-6 transition-all border-2 ${
-                      req.status === 'sudah divalidasi user' ? 'bg-gray-100 text-gray-400 border-transparent' :
-                      req.status === 'sudah selesai' ? 'bg-[#00804D]/10 text-[#00804D] border-[#00804D]/20 shadow-lg shadow-[#00804D]/10' :
-                      req.status === 'sedang dikerjakan' ? 'bg-[#1e4890]/10 text-[#1e4890] border-[#1e4890]/20' :
-                      'bg-amber-50 text-amber-700 border-amber-200'
-                    }`}>
-                      {req.status}
-                    </div>
-
-                    {req.picId && (
-                      <div className="flex justify-between items-center px-1 mb-6">
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">In Charge:</span>
-                        <span className="text-[10px] font-black text-[#1e4890] uppercase underline decoration-[#00804D] decoration-2 underline-offset-4">{req.picId}</span>
-                      </div>
-                    )}
-
-                    {isEditable && (
-                      <div className="mt-auto">
-                        {editingId === req.id ? (
-                          <div className="space-y-2 animate-in fade-in zoom-in-95">
-                            <input 
-                              type="datetime-local" 
-                              className="w-full text-xs font-black p-3 rounded-xl border-2 border-[#1e4890] outline-none"
-                              onChange={(e) => setNewTargetDate(e.target.value)}
-                            />
-                            <div className="flex gap-2 pt-2">
-                              <button onClick={() => handleUpdateTarget(req.id)} className="flex-1 bg-[#1e4890] text-white text-[9px] font-black py-3 rounded-xl hover:bg-[#00804D] transition-all">SAVE</button>
-                              <button onClick={() => setEditingId(null)} className="flex-1 bg-gray-100 text-gray-500 text-[9px] font-black py-3 rounded-xl">CANCEL</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button onClick={() => setEditingId(req.id)} className="w-full py-3 border-2 border-[#1e4890]/10 rounded-2xl text-[9px] font-black text-[#1e4890]/40 uppercase hover:bg-[#1e4890] hover:text-white transition-all italic tracking-widest">
-                            ✎ Update Target
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {req.targetSelesai && (
-                      <SlaTracker 
-                        targetDate={req.targetSelesai} 
-                        status={req.status} 
-                        closedAt={req.closedAt || req.updatedAt} 
-                      />
-                    )}
                   </div>
+                ) : (
+                  <button onClick={() => setEditingId(req.id)} className="w-full py-2.5 border-2 border-[#1e4890]/10 rounded-xl text-[8px] font-black text-[#1e4890]/40 uppercase hover:bg-[#1e4890] hover:text-white transition-all italic tracking-widest">
+                    ✎ Update Target
+                  </button>
+                )}
+              </div>
+            )}
 
-                  {/* ACTION FOOTER - MGM GREEN */}
-                  {req.status === 'sudah selesai' && isOwner && (
-                    <div className="p-8 bg-[#1e4890]">
-                      <button 
-                        onClick={() => handleValidasi(req.id)}
-                        className="w-full bg-[#00804D] text-white text-[11px] font-black py-4 rounded-xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest italic"
-                      >
-                        VALIDATE PERFORMANCE
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {req.targetSelesai && (
+              <SlaTracker 
+                targetDate={req.targetSelesai} 
+                status={req.status} 
+                closedAt={req.closedAt || req.updatedAt} 
+              />
+            )}
           </div>
-        )}
+
+          {req.status === 'sudah selesai' && isOwner && (
+            <div className="p-6 bg-[#1e4890] mt-auto">
+              <button 
+                onClick={() => handleValidasi(req.id)}
+                className="w-full bg-[#00804D] text-white text-[10px] font-black py-3 rounded-xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] uppercase tracking-widest italic"
+              >
+                VALIDATE
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    })}
+  </div>
+)}
       </div>
       
       <style jsx>{`
