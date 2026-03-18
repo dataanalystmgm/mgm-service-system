@@ -395,6 +395,43 @@ export default function DashboardSPV() {
         {/* MAIN MONITOR */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
           
+          {/* KOLOM 5: PENDING / NEED ALLOCATION */}
+          <div className="bg-gray-200/50 p-2 rounded-[1.5rem] border-2 border-dashed border-gray-300 flex flex-col gap-3 min-h-[500px]">
+            <div className="bg-orange-500 p-2 rounded-xl shadow-sm flex items-center justify-between mb-1">
+              <span className="text-[9px] font-black text-white uppercase italic">NEED ALLOCATION</span>
+              <span className="bg-black/20 text-white text-[8px] px-2 py-0.5 rounded-full font-bold animate-pulse">
+                {pendingRequests.length}
+              </span>
+            </div>
+            
+            {pendingRequests
+              .sort((a, b) => {
+                const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+                const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+                return timeA - timeB;
+              })
+              .map((req) => (
+                <CardItem 
+                  key={req.id} 
+                  req={req} 
+                  isAuthorized={isAuthorized} 
+                  editId={editId} 
+                  setEditId={setEditId} 
+                  picList={picList} 
+                  handleUpdateTask={handleUpdateTask} 
+                  handleReject={handleReject} 
+                  user={user}
+                />
+              ))}
+            
+            {pendingRequests.length === 0 && (
+               <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                  <svg className="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                  <p className="text-[8px] font-black uppercase">All Allocated</p>
+               </div>
+            )}
+          </div>
+
           {/* KOLOM 1-4: GROUPING BY PIC */}
           <div className="md:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {Object.keys(groupedByPic).length > 0 ? (
@@ -475,42 +512,6 @@ export default function DashboardSPV() {
             )}
           </div>
 
-          {/* KOLOM 5: PENDING / NEED ALLOCATION */}
-          <div className="bg-gray-200/50 p-2 rounded-[1.5rem] border-2 border-dashed border-gray-300 flex flex-col gap-3 min-h-[500px]">
-            <div className="bg-orange-500 p-2 rounded-xl shadow-sm flex items-center justify-between mb-1">
-              <span className="text-[9px] font-black text-white uppercase italic">NEED ALLOCATION</span>
-              <span className="bg-black/20 text-white text-[8px] px-2 py-0.5 rounded-full font-bold animate-pulse">
-                {pendingRequests.length}
-              </span>
-            </div>
-            
-            {pendingRequests
-              .sort((a, b) => {
-                const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-                const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
-                return timeA - timeB;
-              })
-              .map((req) => (
-                <CardItem 
-                  key={req.id} 
-                  req={req} 
-                  isAuthorized={isAuthorized} 
-                  editId={editId} 
-                  setEditId={setEditId} 
-                  picList={picList} 
-                  handleUpdateTask={handleUpdateTask} 
-                  handleReject={handleReject} 
-                  user={user}
-                />
-              ))}
-            
-            {pendingRequests.length === 0 && (
-               <div className="flex flex-col items-center justify-center py-20 opacity-20">
-                  <svg className="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-                  <p className="text-[8px] font-black uppercase">All Allocated</p>
-               </div>
-            )}
-          </div>
         </div>
       </div>
 
