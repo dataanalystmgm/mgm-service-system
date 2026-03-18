@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { auth, db } from '@/lib/firebaseConfig';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { 
+  signInWithEmailAndPassword, 
+  sendPasswordResetEmail 
+} from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 import Link from 'next/link'; 
+import Swal from 'sweetalert2'; // Pastikan sudah diinstall: npm install sweetalert2
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -12,6 +16,28 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+
+  // --- HELPER UNTUK NOTIFIKASI LOGIN ---
+  const loginNotify = {
+    error: (msg) => {
+      Swal.fire({
+        icon: 'error',
+        title: '<span class="text-lg font-black italic uppercase text-[#dc2626]">OPS!</span>',
+        text: msg,
+        confirmButtonColor: '#dc2626',
+        customClass: { popup: 'rounded-[2.5rem]' }
+      });
+    },
+    success: (title, msg) => {
+      Swal.fire({
+        icon: 'success',
+        title: `<span class="text-lg font-black italic uppercase text-[#00804D]">${title}</span>`,
+        text: msg,
+        confirmButtonColor: '#00804D',
+        customClass: { popup: 'rounded-[2.5rem]' }
+      });
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -35,13 +61,53 @@ export default function Login() {
           router.push('/');
         }
       } else {
-        alert("Data profil tidak ditemukan di database.");
+        loginNotify.error("Data profil tidak ditemukan di database.");
       }
     } catch (error) {
       console.error(error);
-      alert("Login Gagal: Email atau Password salah.");
+      loginNotify.error("Email atau Password yang Anda masukkan salah.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --- FUNGSI RESET PASSWORD DENGAN SWAL ---
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Swal.fire({
+        icon: 'warning',
+        title: '<span class="text-lg font-black italic uppercase text-orange-500">EMAIL KOSONG</span>',
+        text: 'Silakan isi kolom email terlebih dahulu untuk melakukan reset password.',
+        confirmButtonColor: '#1e4890',
+        customClass: { popup: 'rounded-[2.5rem]' }
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: '<span class="font-black uppercase italic text-lg text-[#1e4890]">RESET PASSWORD?</span>',
+      text: `Kirim instruksi reset ke ${email}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#1e4890',
+      cancelButtonColor: '#9ca3af',
+      confirmButtonText: 'YA, KIRIM',
+      cancelButtonText: 'BATAL',
+      customClass: { 
+        popup: 'rounded-[2.5rem]',
+        confirmButton: 'rounded-xl font-black px-6 py-3 uppercase text-[10px]',
+        cancelButton: 'rounded-xl font-black px-6 py-3 uppercase text-[10px]'
+      }
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await sendPasswordResetEmail(auth, email);
+        loginNotify.success("BERHASIL", "Instruksi reset password telah dikirim ke email Anda.");
+      } catch (error) {
+        console.error(error);
+        loginNotify.error("Gagal mengirim email reset. Pastikan email terdaftar.");
+      }
     }
   };
 
@@ -49,7 +115,6 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 font-sans selection:bg-[#9ef3c6a3]/20">
       <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
         
-        {/* HEADER - CORPORATE BLUE WITH GREEN ACCENT */}
         <div className="bg-[#9ef3c6a3] p-10 text-center relative overflow-hidden">
           <h2 className="text-[10px] font-black text-[#00804D] uppercase tracking-[0.4em] mb-4 italic">MGM Service System</h2>
             <Image 
@@ -58,7 +123,7 @@ export default function Login() {
               width={180} 
               height={60} 
               priority={true}
-              className='mx-auto' // Membuat logo menjadi putih agar kontras dengan biru
+              className='mx-auto'
             />
         </div>
 
@@ -75,7 +140,7 @@ export default function Login() {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-4">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Password</label>
             <div className="relative group">
               <input
@@ -100,6 +165,16 @@ export default function Login() {
                     <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
                   </svg>
                 )}
+              </button>
+            </div>
+
+            <div className="flex justify-end pr-1">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-[9px] font-black text-[#1e4890] uppercase tracking-tighter hover:text-[#00804D] transition-colors italic border-b border-transparent hover:border-[#00804D]"
+              >
+                Lupa Password? Kirim ke Email
               </button>
             </div>
           </div>

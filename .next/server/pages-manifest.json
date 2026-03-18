@@ -2,8 +2,8 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/login": "pages/login.js",
-  "/admin/DashboardSPV": "pages/admin/DashboardSPV.js",
   "/": "pages/index.js",
-  "/request": "pages/request.js"
+  "/request/status": "pages/request/status.js",
+  "/request": "pages/request.js",
+  "/admin/DashboardSPV": "pages/admin/DashboardSPV.js"
 }

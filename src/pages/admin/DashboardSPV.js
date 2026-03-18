@@ -50,11 +50,11 @@ const spvNotify = {
 // --- KOMPONEN COUNTDOWN TIMER ---
 function CountdownTimer({ targetDate, status, label }) {
   const [timeLeft, setTimeLeft] = useState("");
-  const currentStatus = status?.toUpperCase() || "";
-  const isFinished = currentStatus === "SUDAH DIVALIDASI USER" || currentStatus === "SUDAH SELESAI";
+  const currentStatus = status?.toLowerCase() || "";
+  const isFinished = currentStatus === "sudah divalidasi user" || currentStatus === "sudah selesai" || currentStatus === "finish";
 
   useEffect(() => {
-    if (!targetDate || isFinished || currentStatus === "DITOLAK") {
+    if (!targetDate || isFinished || currentStatus === "ditolak") {
       setTimeLeft("0");
       return;
     }
@@ -89,8 +89,8 @@ function CountdownTimer({ targetDate, status, label }) {
 
 // --- KOMPONEN SLA ANALYSIS ---
 function SlaAnalysis({ targetDate, closedAt, status, label }) {
-  const currentStatus = status?.toUpperCase() || "";
-  const isFinished = currentStatus === "SUDAH DIVALIDASI USER" || currentStatus === "SUDAH SELESAI";
+  const currentStatus = status?.toLowerCase() || "";
+  const isFinished = currentStatus === "sudah divalidasi user" || currentStatus === "sudah selesai" || currentStatus === "finish";
 
   if (!isFinished || !targetDate) return (
     <div className="flex flex-col items-center flex-1 px-1 py-1 rounded-xl border border-dashed border-gray-200">
@@ -121,6 +121,86 @@ function SlaAnalysis({ targetDate, closedAt, status, label }) {
   );
 }
 
+// --- SUB-KOMPONEN CARD UTAMA ---
+function CardItem({ req, isAuthorized, editId, setEditId, picList, handleUpdateTask, handleReject, user }) {
+  const isEditing = editId === req.id || req.status === 'pending';
+  const currentStatus = req.status?.toLowerCase();
+  const isFinal = currentStatus === "sudah divalidasi user" || currentStatus === "sudah selesai" || currentStatus === "finish";
+  const isMendesak = req.prioritas?.toLowerCase() === 'mendesak';
+
+  let cardBg = "bg-white";
+  const targetTime = new Date(req.targetSelesai || req.deadline).getTime();
+  const now = new Date().getTime();
+  if (isFinal) cardBg = (new Date(req.closedAt).getTime() <= targetTime) ? "bg-[#00804D]/5" : "bg-red-500/5";
+  else if (now > targetTime && req.status !== 'ditolak') cardBg = "bg-red-500/5";
+
+  return (
+    <div className={`${cardBg} rounded-[1.2rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-md ${req.status === 'ditolak' ? 'grayscale opacity-60' : ''}`}>
+      <div className="p-3 flex-1 flex flex-col">
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex flex-col">
+            <span className="text-[6px] font-black text-gray-400 uppercase leading-none">Req At:</span>
+            <span className="text-[8px] font-bold text-gray-500 italic">
+              {req.createdAt?.toDate ? req.createdAt.toDate().toLocaleString('id-ID', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}) : '-'}
+            </span>
+          </div>
+          {isMendesak && <span className="bg-red-600 text-white text-[6px] font-black px-1.5 py-0.5 rounded italic animate-pulse tracking-tighter">MENDESAK</span>}
+        </div>
+
+        <div className="mb-2">
+          <div className="flex flex-wrap gap-1 items-center mb-1">
+            <span className="text-[7px] font-black bg-[#1e4890] text-white px-1.5 py-0.5 rounded uppercase tracking-widest">{req.tipe}</span>
+            <span className="text-[7px] font-black bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded uppercase border border-gray-300">{req.areaSpesifik || 'General'}</span>
+          </div>
+          <h3 className="text-[9px] font-black text-gray-900 uppercase leading-tight mt-1 line-clamp-2 min-h-[1.6rem] italic">{req.deskripsi}</h3>
+        </div>
+
+        <div className="flex gap-1 mb-2 p-1 bg-gray-50 rounded-xl border border-gray-100">
+          <CountdownTimer label="INT" targetDate={req.targetSelesai} status={req.status} />
+          <CountdownTimer label="USR" targetDate={req.deadline} status={req.status} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-1 text-[8px] mb-2 bg-white/40 p-1.5 rounded-lg border border-gray-100">
+          <div className="truncate">
+            <p className="text-[6px] font-black text-gray-400 uppercase leading-none">User</p>
+            <p className="font-bold text-gray-800 truncate uppercase">{req.nama}</p>
+          </div>
+          <div className="truncate">
+            <p className="text-[6px] font-black text-gray-400 uppercase leading-none">Status</p>
+            <p className="font-bold text-[#00804D] truncate uppercase text-[7px]">{req.status}</p>
+          </div>
+        </div>
+
+        <div className="mt-auto pt-2 border-t border-gray-100">
+          {isEditing && isAuthorized ? (
+            <div className="flex flex-col gap-1">
+              <select id={`pic-${req.id}`} defaultValue={req.picId || ""} className="w-full p-1 bg-white border border-gray-200 rounded-md text-[8px] font-black outline-none focus:border-[#00804D]">
+                <option value="">-- PIC --</option>
+                {picList.map(pic => <option key={pic.id} value={pic.name} data-nik={pic.nik}>{pic.name}</option>)}
+              </select>
+              <input type="datetime-local" id={`date-${req.id}`} defaultValue={req.targetSelesai || ""} className="w-full p-1 bg-white border border-gray-200 text-[8px] font-black rounded-md outline-none focus:border-[#00804D]" />
+              <div className="flex gap-1">
+                <button onClick={() => handleUpdateTask(req.id)} className="flex-1 bg-[#00804D] text-white py-1.5 rounded-md text-[8px] font-black uppercase hover:bg-[#00663d]">Publish</button>
+                <button onClick={() => handleReject(req.id)} className="bg-gray-900 text-white px-2 py-1.5 rounded-md text-[8px] font-black uppercase hover:bg-red-600">X</button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-between items-center gap-1">
+                 <SlaAnalysis label="SLA INT" targetDate={req.targetSelesai} closedAt={req.closedAt} status={req.status} />
+                 <SlaAnalysis label="SLA USR" targetDate={req.deadline} closedAt={req.closedAt} status={req.status} />
+                 {!isFinal && isAuthorized && (
+                    <button onClick={() => setEditId(req.id)} className="bg-white hover:bg-[#1e4890] hover:text-white text-[#1e4890] p-1.5 rounded-lg border border-gray-100 shadow-sm transition-all">
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                    </button>
+                 )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardSPV() {
   const { user, loading: authLoading } = useAuth();
   const [requests, setRequests] = useState([]);
@@ -130,8 +210,6 @@ export default function DashboardSPV() {
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState(null); 
   const [showPicMaster, setShowPicMaster] = useState(false);
-  
-  // State Filter
   const [filterDate, setFilterDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -210,11 +288,24 @@ export default function DashboardSPV() {
     }
   };
 
-  // LOGIKA FILTER
+  // --- LOGIKA URUTAN & SCORE ---
+  const getSortScore = (req) => {
+    const s = req.status?.toLowerCase();
+    const now = Date.now();
+    const target = new Date(req.targetSelesai || req.deadline).getTime();
+    const isLate = now > target;
+
+    if (s === 'sedang dikerjakan') return 1;
+    if (s === 'to do' && isLate) return 2;
+    if (s === 'to do' && !isLate) return 3;
+    if (s === 'finish' || s === 'sudah selesai') return 4;
+    if (s === 'sudah divalidasi user') return 5;
+    return 6;
+  };
+
   const filteredRequests = requests.filter(req => {
     const searchLower = searchQuery.toLowerCase();
     const reqDate = req.createdAt?.toDate ? req.createdAt.toDate().toISOString().split('T')[0] : "";
-    
     const matchesDate = filterDate === "" || reqDate === filterDate;
     const matchesSearch = searchQuery === "" || 
       req.tipe?.toLowerCase().includes(searchLower) ||
@@ -222,9 +313,18 @@ export default function DashboardSPV() {
       req.nama?.toLowerCase().includes(searchLower) ||
       req.picId?.toLowerCase().includes(searchLower) ||
       req.areaSpesifik?.toLowerCase().includes(searchLower);
-
     return matchesDate && matchesSearch;
   });
+
+  const pendingRequests = filteredRequests.filter(req => req.status === 'pending');
+  const assignedRequests = filteredRequests.filter(req => req.status !== 'pending');
+
+  const groupedByPic = assignedRequests.reduce((acc, req) => {
+    const picName = req.picId || "UNASSIGNED";
+    if (!acc[picName]) acc[picName] = [];
+    acc[picName].push(req);
+    return acc;
+  }, {});
 
   if (loading || authLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00804D]"></div></div>;
 
@@ -241,7 +341,6 @@ export default function DashboardSPV() {
             <p className="text-[8px] font-bold text-[#1e4890] uppercase tracking-[0.3em]">Supervisor Dashboard</p>
           </div>
 
-          {/* FILTER AREA */}
           <div className="flex flex-wrap gap-2 w-full md:w-auto">
               <input 
                 type="date" 
@@ -293,107 +392,128 @@ export default function DashboardSPV() {
           </div>
         )}
 
-        {/* GRID MONITOR */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {filteredRequests.map((req) => {
-            const isEditing = editId === req.id || req.status === 'pending';
-            const currentStatus = req.status?.toUpperCase();
-            const isFinal = currentStatus === "SUDAH DIVALIDASI USER" || currentStatus === "SUDAH SELESAI";
-            const isMendesak = req.prioritas?.toLowerCase() === 'mendesak';
+        {/* MAIN MONITOR */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+          
+          {/* KOLOM 1-4: GROUPING BY PIC */}
+          <div className="md:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Object.keys(groupedByPic).length > 0 ? (
+              Object.keys(groupedByPic).map((picName) => {
+                // LOGIKA HITUNGAN PER PIC
+                const tasks = groupedByPic[picName];
+                const total = tasks.length;
+                const inProgress = tasks.filter(t => t.status?.toLowerCase() === 'sedang dikerjakan').length;
+                const lateToDo = tasks.filter(t => {
+                   const s = t.status?.toLowerCase();
+                   const now = Date.now();
+                   const target = new Date(t.targetSelesai || t.deadline).getTime();
+                   return s === 'to do' && now > target;
+                }).length;
+                const wtlToDo = tasks.filter(t => {
+                   const s = t.status?.toLowerCase();
+                   const now = Date.now();
+                   const target = new Date(t.targetSelesai || t.deadline).getTime();
+                   return s === 'to do' && now <= target;
+                }).length;
 
-            let cardBg = "bg-white";
-            const targetTime = new Date(req.targetSelesai || req.deadline).getTime();
-            const now = new Date().getTime();
-            if (isFinal) cardBg = (new Date(req.closedAt).getTime() <= targetTime) ? "bg-[#00804D]/5" : "bg-red-500/5";
-            else if (now > targetTime && req.status !== 'ditolak') cardBg = "bg-red-500/5";
-
-            return (
-              <div key={req.id} className={`${cardBg} rounded-[1.2rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col transition-all hover:shadow-md ${req.status === 'ditolak' ? 'grayscale opacity-60' : ''}`}>
-                <div className="p-3 flex-1 flex flex-col">
-                  
-                  {/* TIMESTAMP & PRIORITY BADGE */}
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex flex-col">
-                      <span className="text-[6px] font-black text-gray-400 uppercase leading-none">Requested At:</span>
-                      <span className="text-[8px] font-bold text-gray-500 italic">
-                        {req.createdAt?.toDate ? req.createdAt.toDate().toLocaleString('id-ID', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}) : '-'}
-                      </span>
-                    </div>
-                    {isMendesak && (
-                      <span className="bg-red-600 text-white text-[6px] font-black px-1.5 py-0.5 rounded italic animate-pulse tracking-tighter">MENDESAK</span>
-                    )}
-                  </div>
-
-                  {/* TYPE, AREA & DESCRIPTION */}
-                  <div className="mb-2">
-                    <div className="flex flex-wrap gap-1 items-center mb-1">
-                      <span className="text-[7px] font-black bg-[#1e4890] text-white px-1.5 py-0.5 rounded uppercase tracking-widest">{req.tipe}</span>
-                      {/* PENAMBAHAN AREA SPESIFIK */}
-                      <span className="text-[7px] font-black bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded uppercase border border-gray-300">
-                        {req.areaSpesifik || 'General'}
-                      </span>
-                    </div>
-                    <h3 className="text-[9px] font-black text-gray-900 uppercase leading-tight mt-1 line-clamp-2 min-h-[1.6rem] italic">{req.deskripsi}</h3>
-                  </div>
-
-                  {/* COUNTDOWNS */}
-                  <div className="flex gap-1 mb-2 p-1 bg-gray-50 rounded-xl border border-gray-100">
-                    <CountdownTimer label="INT" targetDate={req.targetSelesai} status={req.status} />
-                    <CountdownTimer label="USR" targetDate={req.deadline} status={req.status} />
-                  </div>
-
-                  {/* PERSON INFO */}
-                  <div className="grid grid-cols-2 gap-1 text-[8px] mb-2 bg-white/40 p-1.5 rounded-lg border border-gray-100">
-                    <div className="truncate">
-                      <p className="text-[6px] font-black text-gray-400 uppercase leading-none">User</p>
-                      <p className="font-bold text-gray-800 truncate uppercase">{req.nama}</p>
-                    </div>
-                    <div className="truncate">
-                      <p className="text-[6px] font-black text-gray-400 uppercase leading-none">PIC</p>
-                      <p className="font-bold text-[#00804D] truncate uppercase">{req.picId || 'NONE'}</p>
-                    </div>
-                  </div>
-
-                  {/* ACTION / SLA AREA */}
-                  <div className="mt-auto pt-2 border-t border-gray-100">
-                    {isEditing && isAuthorized ? (
-                      <div className="flex flex-col gap-1">
-                        <select id={`pic-${req.id}`} defaultValue={req.picId || ""} className="w-full p-1 bg-white border border-gray-200 rounded-md text-[8px] font-black outline-none focus:border-[#00804D]">
-                          <option value="">-- PIC --</option>
-                          {picList.map(pic => <option key={pic.id} value={pic.name} data-nik={pic.nik}>{pic.name}</option>)}
-                        </select>
-                        <input type="datetime-local" id={`date-${req.id}`} defaultValue={req.targetSelesai || ""} className="w-full p-1 bg-white border border-gray-200 text-[8px] font-black rounded-md outline-none focus:border-[#00804D]" />
-                        <div className="flex gap-1">
-                          <button onClick={() => handleUpdateTask(req.id)} className="flex-1 bg-[#00804D] text-white py-1.5 rounded-md text-[8px] font-black uppercase hover:bg-[#00663d]">Publish</button>
-                          <button onClick={() => handleReject(req.id)} className="bg-gray-900 text-white px-2 py-1.5 rounded-md text-[8px] font-black uppercase hover:bg-red-600">X</button>
+                return (
+                  <div key={picName} className="flex flex-col gap-3">
+                    {/* UPDATED HEADER PIC DENGAN 4 ANGKA */}
+                    <div className="bg-[#1e4890] p-2 rounded-xl shadow-sm border-b-2 border-white/20">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[9px] font-black text-white uppercase italic tracking-tighter truncate max-w-[70%]">{picName}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[6px] font-black text-blue-200">TTL</span>
+                          <span className="bg-white/20 text-white text-[9px] px-1.5 py-0.5 rounded-md font-black">{total}</span>
                         </div>
                       </div>
-                    ) : (
-                      <div className="flex justify-between items-center gap-1">
-                           <SlaAnalysis label="SLA INT" targetDate={req.targetSelesai} closedAt={req.closedAt} status={req.status} />
-                           <SlaAnalysis label="SLA USR" targetDate={req.deadline} closedAt={req.closedAt} status={req.status} />
-                           {!isFinal && isAuthorized && (
-                              <button onClick={() => setEditId(req.id)} className="bg-white hover:bg-[#1e4890] hover:text-white text-[#1e4890] p-1.5 rounded-lg border border-gray-100 shadow-sm transition-all">
-                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                              </button>
-                           )}
+                      <div className="flex justify-between gap-1">
+                         <div className="flex-1 bg-white/10 rounded-md p-1 flex flex-col items-center">
+                            <span className="text-[5px] font-black text-blue-100 uppercase leading-none mb-0.5">PRG</span>
+                            <span className="text-[9px] font-black text-white">{inProgress}</span>
+                         </div>
+                         <div className={`flex-1 rounded-md p-1 flex flex-col items-center ${lateToDo > 0 ? 'bg-red-500/40 animate-pulse' : 'bg-white/10'}`}>
+                            <span className="text-[5px] font-black text-red-100 uppercase leading-none mb-0.5">LATE</span>
+                            <span className="text-[9px] font-black text-white">{lateToDo}</span>
+                         </div>
+                         <div className="flex-1 bg-white/10 rounded-md p-1 flex flex-col items-center">
+                            <span className="text-[5px] font-black text-blue-100 uppercase leading-none mb-0.5">WTL</span>
+                            <span className="text-[9px] font-black text-white">{wtlToDo}</span>
+                         </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        
-        {/* EMPTY STATE */}
-        {filteredRequests.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-gray-400 font-black italic uppercase tracking-widest text-[10px]">No Matching Requests Found</p>
-          </div>
-        )}
+                    </div>
 
+                    <div className="flex flex-col gap-3">
+                      {tasks
+                        .sort((a, b) => {
+                          const scoreA = getSortScore(a);
+                          const scoreB = getSortScore(b);
+                          if (scoreA !== scoreB) return scoreA - scoreB;
+                          const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+                          const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+                          return timeA - timeB;
+                        })
+                        .map((req) => (
+                          <CardItem 
+                            key={req.id} 
+                            req={req} 
+                            isAuthorized={isAuthorized} 
+                            editId={editId} 
+                            setEditId={setEditId} 
+                            picList={picList} 
+                            handleUpdateTask={handleUpdateTask} 
+                            handleReject={handleReject} 
+                            user={user}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="col-span-full py-10 text-center text-gray-400 italic text-[10px] font-black uppercase tracking-widest">No Active Assignments</div>
+            )}
+          </div>
+
+          {/* KOLOM 5: PENDING / NEED ALLOCATION */}
+          <div className="bg-gray-200/50 p-2 rounded-[1.5rem] border-2 border-dashed border-gray-300 flex flex-col gap-3 min-h-[500px]">
+            <div className="bg-orange-500 p-2 rounded-xl shadow-sm flex items-center justify-between mb-1">
+              <span className="text-[9px] font-black text-white uppercase italic">NEED ALLOCATION</span>
+              <span className="bg-black/20 text-white text-[8px] px-2 py-0.5 rounded-full font-bold animate-pulse">
+                {pendingRequests.length}
+              </span>
+            </div>
+            
+            {pendingRequests
+              .sort((a, b) => {
+                const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+                const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+                return timeA - timeB;
+              })
+              .map((req) => (
+                <CardItem 
+                  key={req.id} 
+                  req={req} 
+                  isAuthorized={isAuthorized} 
+                  editId={editId} 
+                  setEditId={setEditId} 
+                  picList={picList} 
+                  handleUpdateTask={handleUpdateTask} 
+                  handleReject={handleReject} 
+                  user={user}
+                />
+              ))}
+            
+            {pendingRequests.length === 0 && (
+               <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                  <svg className="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                  <p className="text-[8px] font-black uppercase">All Allocated</p>
+               </div>
+            )}
+          </div>
+        </div>
       </div>
+
       {selectedTask && <ImageModal task={selectedTask} onClose={() => setSelectedTask(null)} />}
     </div>
   );

@@ -332,7 +332,11 @@ export default function DashboardPIC() {
                     <div className="p-1.5 bg-gray-50 rounded-lg border border-gray-100">
                       <p className="text-gray-400 mb-0.5 uppercase font-black text-[6px]">Tgl Request</p>
                       <p className="font-bold text-gray-800 leading-none">
-                        {task.createdAt ? new Date(task.createdAt).toLocaleDateString('id-ID', {day:'2-digit', month:'2-digit', year:'2-digit'}) : '-'}
+                        {task.createdAt 
+                          ? (task.createdAt.toDate 
+                              ? task.createdAt.toDate().toLocaleDateString('id-ID', {day:'2-digit', month:'2-digit', year:'2-digit'})
+                              : new Date(task.createdAt).toLocaleDateString('id-ID', {day:'2-digit', month:'2-digit', year:'2-digit'}))
+                          : '-'}
                       </p>
                       <p className="text-gray-400 text-[6px] mt-0.5 font-bold uppercase">MGM SYSTEM</p>
                     </div>
