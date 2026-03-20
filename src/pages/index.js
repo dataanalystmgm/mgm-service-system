@@ -98,7 +98,7 @@ export default function Home() {
 
             {/* 4. GENERAL REPORT CARD (TAMBAHAN BARU) */}
             {isAdminAuthorized ? (
-              <Link href="/admin/report" className="group p-8 bg-white border-2 border-gray-100 rounded-3xl hover:border-amber-500 hover:shadow-xl hover:shadow-amber-500/10 transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between">
+              <Link href="/report" className="group p-8 bg-white border-2 border-gray-100 rounded-3xl hover:border-amber-500 hover:shadow-xl hover:shadow-amber-500/10 transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between">
                 <div>
                   <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-500 transition-colors">
                     <svg className="w-6 h-6 text-amber-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
