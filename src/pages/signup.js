@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { auth, db } from '@/lib/firebaseConfig';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { setDoc, doc, collection, onSnapshot, updateDoc, arrayUnion } from 'firebase/firestore';
+import { setDoc, doc, onSnapshot, arrayUnion } from 'firebase/firestore'; // Ubah updateDoc jadi setDoc
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Swal from 'sweetalert2';
@@ -18,12 +18,10 @@ export default function SignUp() {
   const [departments, setDepartments] = useState([]);
   const [showNewDeptInput, setShowNewDeptInput] = useState(false);
   const [newDeptName, setNewDeptName] = useState('');
-  
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
 
-  // --- HELPER NOTIFIKASI ---
   const signNotify = {
     error: (msg) => {
       Swal.fire({
@@ -62,14 +60,18 @@ export default function SignUp() {
     try {
       const formattedDept = newDeptName.trim().toUpperCase();
       const docRef = doc(db, "settings", "lists");
-      await updateDoc(docRef, {
+      
+      // Menggunakan setDoc + merge agar membuat doc otomatis jika belum ada
+      await setDoc(docRef, {
         departments: arrayUnion(formattedDept)
-      });
+      }, { merge: true });
+
       setFormData({ ...formData, dept: formattedDept });
       setNewDeptName('');
       setShowNewDeptInput(false);
     } catch (err) {
-      signNotify.error("Gagal menambah departemen.");
+      console.error(err);
+      signNotify.error("Gagal menambah departemen. Cek koneksi atau Rules Firestore.");
     }
   };
 
@@ -103,7 +105,6 @@ export default function SignUp() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 font-sans selection:bg-[#9ef3c6a3]/20">
       <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl p-10 border border-gray-100 relative overflow-hidden">
-        
         <div className="absolute top-0 left-0 w-full h-2 bg-[#1e4890]"></div>
 
         <div className="mb-8 text-center sm:text-left">
@@ -112,7 +113,6 @@ export default function SignUp() {
         </div>
 
         <form onSubmit={handleSignUp} className="space-y-5">
-          {/* NAMA LENGKAP */}
           <div>
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Nama Lengkap</label>
             <input 
@@ -125,7 +125,6 @@ export default function SignUp() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* NIK */}
             <div>
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">NIK</label>
               <input 
@@ -137,10 +136,9 @@ export default function SignUp() {
               />
             </div>
             
-            {/* DEPARTEMEN - SIZE KONSISTEN */}
             <div className="relative">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Departemen</label>
-              <div className="h-[52px]"> {/* Container fixed height agar tidak goyang */}
+              <div className="h-[52px]">
                 {!showNewDeptInput ? (
                   <select 
                     required
@@ -163,7 +161,7 @@ export default function SignUp() {
                       autoFocus
                       value={newDeptName}
                       onChange={(e) => setNewDeptName(e.target.value)}
-                      onBlur={handleAddNewDept} // Simpan otomatis saat klik di luar
+                      onBlur={handleAddNewDept}
                       onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddNewDept())}
                     />
                     <button 
@@ -177,7 +175,6 @@ export default function SignUp() {
             </div>
           </div>
 
-          {/* EMAIL */}
           <div>
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Email Perusahaan</label>
             <input 
@@ -189,7 +186,6 @@ export default function SignUp() {
             />
           </div>
 
-          {/* PASSWORD */}
           <div className="space-y-1">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Password</label>
             <div className="relative">

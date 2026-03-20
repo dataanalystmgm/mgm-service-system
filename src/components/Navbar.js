@@ -15,9 +15,9 @@ export default function Navbar() {
   // State untuk Mobile Menu Toggle
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // LOGIKA OTORISASI DASHBOARD SPV
-  const SUPER_ADMIN_ID = ["MGM 4329", "MGM 1111"];
-  const isAuthorizedSPV = user && SUPER_ADMIN_ID.includes(user.nik);
+  // LOGIKA OTORISASI (Hanya NIK ini yang bisa melihat menu Admin & Report)
+  const AUTHORIZED_IDS = ["MGM 4329", "MGM 1111"];
+  const isAuthorizedAdmin = user && AUTHORIZED_IDS.includes(user.nik);
 
   // State untuk Edit Akun
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,11 +27,25 @@ export default function Navbar() {
     newPassword: ''
   });
 
+  // Jangan tampilkan navbar di halaman login
   if (router.pathname === '/login') return null;
 
   const handleLogout = async () => {
-    await signOut(auth);
-    router.push('/login');
+    const result = await Swal.fire({
+      title: 'LOGOUT?',
+      text: "Sesi Anda akan diakhiri.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#9ca3af',
+      confirmButtonText: 'KELUAR',
+      customClass: { popup: 'rounded-[2rem]' }
+    });
+
+    if (result.isConfirmed) {
+      await signOut(auth);
+      router.push('/login');
+    }
   };
 
   const handleUpdateProfile = async (e) => {
@@ -40,25 +54,26 @@ export default function Navbar() {
     try {
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, { name: editData.name });
+      
       if (editData.newPassword) {
         if (editData.newPassword.length < 6) throw new Error("Password minimal 6 karakter.");
         await updatePassword(auth.currentUser, editData.newPassword);
       }
+
       Swal.fire({
         icon: 'success',
         title: 'PROFIL DIPERBARUI',
-        text: 'Data akun Anda berhasil diperbarui.',
         confirmButtonColor: '#00804D',
         customClass: { popup: 'rounded-[2rem]' }
       });
       setIsModalOpen(false);
     } catch (error) {
-      console.error(error);
       Swal.fire({
         icon: 'error',
         title: 'UPDATE GAGAL',
         text: error.message,
-        confirmButtonColor: '#1e4890'
+        confirmButtonColor: '#1e4890',
+        customClass: { popup: 'rounded-[2rem]' }
       });
     } finally {
       setIsUpdating(false);
@@ -72,10 +87,10 @@ export default function Navbar() {
           <div className="flex justify-between h-20">
             <div className="flex items-center gap-4 md:gap-6">
               
-              {/* MOBILE MENU BUTTON - MUNCUL HANYA DI LAYAR KECIL */}
+              {/* MOBILE MENU BUTTON */}
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden p-2 rounded-xl bg-gray-50 text-[#1e4890] hover:bg-[#00804D]/10 transition-colors"
+                className="lg:hidden p-2 rounded-xl bg-gray-50 text-[#1e4890]"
               >
                 {isMobileMenuOpen ? (
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -84,13 +99,14 @@ export default function Navbar() {
                 )}
               </button>
 
-              <Link href="/" className="flex items-center gap-3 md:gap-4 group transition-transform active:scale-95">
-                <div className="relative w-24 h-10 md:w-36 md:h-14 flex items-center justify-center px-2 py-1 bg-white rounded-xl border border-gray-100 group-hover:border-[#00804D]/30 transition-all shadow-sm overflow-hidden">
+              {/* LOGO SECTION */}
+              <Link href="/" className="flex items-center gap-3 md:gap-4 group">
+                <div className="relative w-24 h-10 md:w-32 md:h-12 flex items-center justify-center px-2 py-1 bg-white rounded-xl border border-gray-100 group-hover:border-[#00804D]/30 transition-all shadow-sm overflow-hidden">
                   <Image 
                     src="/assets/logo-mgm.png" 
                     alt="MGM Logo" 
-                    width={180} 
-                    height={60}
+                    width={150} 
+                    height={50}
                     className="object-contain w-full h-full" 
                     priority={true}
                   />
@@ -105,18 +121,25 @@ export default function Navbar() {
                 </div>
               </Link>
               
-              {/* DESKTOP MENU - HIDDEN ON MOBILE */}
+              {/* DESKTOP NAVIGATION */}
               <div className="hidden lg:ml-6 lg:flex lg:items-center lg:gap-1">
                 <NavLink href="/" active={router.pathname === '/'}>Beranda</NavLink>
                 <NavLink href="/request" active={router.pathname === '/request'}>Buat Laporan</NavLink>
                 <NavLink href="/request/status" active={router.pathname === '/request/status'}>Status Saya</NavLink>
-                {isAuthorizedSPV && (
-                  <NavLink href="/admin/DashboardSPV" active={router.pathname === '/admin/DashboardSPV'}>Dashboard SPV</NavLink>
+                
+                {/* MENU KHUSUS ADMIN & REPORT (HIDDEN JIKA BUKAN MGM 4329/1111) */}
+                {isAuthorizedAdmin && (
+                  <>
+                    <NavLink href="/admin/DashboardSPV" active={router.pathname === '/admin/DashboardSPV'}>Dashboard SPV</NavLink>
+                    <NavLink href="/report" active={router.pathname === '/report'}>General Report</NavLink>
+                  </>
                 )}
+                
                 <NavLink href="/pic/DashboardPIC" active={router.pathname === '/pic/DashboardPIC'}>Tugas PIC</NavLink>
               </div>
             </div>
 
+            {/* USER PROFILE & LOGOUT */}
             <div className="flex items-center gap-2 md:gap-3">
               {user ? (
                 <div className="flex items-center gap-2 md:gap-3 bg-gray-50/50 pl-3 md:pl-4 pr-2 py-1.5 rounded-2xl border border-gray-100">
@@ -132,7 +155,7 @@ export default function Navbar() {
                       setEditData({ name: user?.name, newPassword: '' });
                       setIsModalOpen(true);
                     }}
-                    className="h-8 w-8 md:h-9 md:w-9 bg-[#1e4890] rounded-xl flex items-center justify-center text-white font-black text-xs italic shadow-md border-2 border-white hover:scale-110 hover:bg-[#00804D] transition-all"
+                    className="h-8 w-8 md:h-9 md:w-9 bg-[#1e4890] rounded-xl flex items-center justify-center text-white font-black text-xs italic border-2 border-white shadow-md hover:bg-[#00804D] transition-all"
                   >
                     {user?.name?.charAt(0)}
                   </button>
@@ -140,11 +163,11 @@ export default function Navbar() {
                   <div className="w-[1px] h-6 bg-gray-200 mx-1"></div>
 
                   <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-500 transition-all">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                   </button>
                 </div>
               ) : (
-                <Link href="/login" className="px-4 py-2 bg-[#00804D] text-white text-[9px] md:text-[10px] font-black rounded-xl hover:bg-[#00663d] transition-all shadow-lg uppercase italic">
+                <Link href="/login" className="px-4 py-2 bg-[#00804D] text-white text-[9px] font-black rounded-xl uppercase italic">
                   Login
                 </Link>
               )}
@@ -152,21 +175,27 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* MOBILE DROPDOWN - MUNCUL SAAT isMobileMenuOpen TRUE */}
-        <div className={`lg:hidden transition-all duration-300 ease-in-out border-t border-gray-50 bg-white overflow-hidden ${isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+        {/* MOBILE DROPDOWN MENU */}
+        <div className={`lg:hidden transition-all duration-300 ease-in-out border-t border-gray-50 bg-white overflow-hidden ${isMobileMenuOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
           <div className="px-4 pt-4 pb-6 space-y-2">
             <MobileNavLink href="/" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/'}>Beranda</MobileNavLink>
             <MobileNavLink href="/request" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/request'}>Buat Laporan</MobileNavLink>
             <MobileNavLink href="/request/status" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/request/status'}>Status Saya</MobileNavLink>
-            {isAuthorizedSPV && (
-              <MobileNavLink href="/admin/DashboardSPV" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/admin/DashboardSPV'}>Dashboard SPV</MobileNavLink>
+            
+            {/* PROTEKSI DI MOBILE MENU */}
+            {isAuthorizedAdmin && (
+              <>
+                <MobileNavLink href="/admin/DashboardSPV" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/admin/DashboardSPV'}>Dashboard SPV</MobileNavLink>
+                <MobileNavLink href="/report" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/report'}>General Report</MobileNavLink>
+              </>
             )}
+            
             <MobileNavLink href="/pic/DashboardPIC" onClick={() => setIsMobileMenuOpen(false)} active={router.pathname === '/pic/DashboardPIC'}>Tugas PIC</MobileNavLink>
           </div>
         </div>
       </nav>
 
-      {/* MODAL EDIT AKUN (KODE TETAP SAMA) */}
+      {/* MODAL EDIT AKUN (Sama seperti sebelumnya) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-black/40">
           <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-200">
@@ -182,20 +211,20 @@ export default function Navbar() {
 
             <form onSubmit={handleUpdateProfile} className="p-8 space-y-5">
               <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 ml-1">ID Karyawan (LOCKED)</label>
-                <input type="text" value={user?.nik || ''} readOnly className="w-full p-4 bg-gray-100 border-2 border-transparent rounded-2xl text-sm font-bold text-gray-400 cursor-not-allowed italic" />
+                <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">ID Karyawan</label>
+                <input type="text" value={user?.nik || ''} readOnly className="w-full p-4 bg-gray-100 rounded-2xl text-sm font-bold text-gray-400 cursor-not-allowed italic border-none" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 ml-1">Nama Lengkap</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Nama Lengkap</label>
                 <input required type="text" value={editData.name} onChange={(e) => setEditData({...editData, name: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-[#00804D] focus:bg-white rounded-2xl outline-none transition-all font-bold text-sm" />
               </div>
               <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 ml-1">Password Baru</label>
-                <input type="password" placeholder="Kosongkan jika tetap" value={editData.newPassword} onChange={(e) => setEditData({...editData, newPassword: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-[#1e4890] focus:bg-white rounded-2xl outline-none transition-all font-bold text-sm placeholder:font-normal placeholder:text-gray-300" />
+                <label className="text-[10px] font-black text-gray-400 uppercase block mb-1">Password Baru</label>
+                <input type="password" placeholder="Kosongkan jika tetap" value={editData.newPassword} onChange={(e) => setEditData({...editData, newPassword: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent focus:border-[#1e4890] focus:bg-white rounded-2xl outline-none transition-all font-bold text-sm" />
               </div>
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase text-gray-400 border-2 border-gray-100 hover:bg-gray-50 transition-all">Batal</button>
-                <button type="submit" disabled={isUpdating} className="flex-1 py-4 bg-[#00804D] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic shadow-lg shadow-[#00804D]/20 hover:bg-[#1e4890] transition-all disabled:bg-gray-200">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase text-gray-400 border-2 border-gray-100 hover:bg-gray-50">Batal</button>
+                <button type="submit" disabled={isUpdating} className="flex-1 py-4 bg-[#00804D] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] italic shadow-lg hover:bg-[#1e4890] transition-all">
                   {isUpdating ? 'MENYIMPAN...' : 'SIMPAN'}
                 </button>
               </div>
@@ -207,14 +236,14 @@ export default function Navbar() {
   );
 }
 
-// NavLink Desktop
+// Sub-Komponen Link Desktop
 function NavLink({ href, children, active }) {
   return (
     <Link 
       href={href} 
       className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${
         active 
-          ? 'bg-[#00804D] text-white shadow-md shadow-[#00804D]/20' 
+          ? 'bg-[#00804D] text-white shadow-md' 
           : 'text-gray-500 hover:bg-[#1e4890]/5 hover:text-[#1e4890]'
       }`}
     >
@@ -223,7 +252,7 @@ function NavLink({ href, children, active }) {
   );
 }
 
-// MobileNavLink Dropdown
+// Sub-Komponen Link Mobile
 function MobileNavLink({ href, children, active, onClick }) {
   return (
     <Link 
@@ -231,7 +260,7 @@ function MobileNavLink({ href, children, active, onClick }) {
       onClick={onClick}
       className={`block px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
         active 
-          ? 'bg-[#00804D] text-white italic shadow-lg shadow-[#00804D]/10' 
+          ? 'bg-[#00804D] text-white italic' 
           : 'bg-gray-50 text-gray-500 hover:bg-[#1e4890]/5'
       }`}
     >

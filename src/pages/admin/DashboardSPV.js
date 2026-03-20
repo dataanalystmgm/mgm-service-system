@@ -288,7 +288,6 @@ export default function DashboardSPV() {
     }
   };
 
-  // --- LOGIKA URUTAN & SCORE ---
   const getSortScore = (req) => {
     const s = req.status?.toLowerCase();
     const now = Date.now();
@@ -393,9 +392,9 @@ export default function DashboardSPV() {
         )}
 
         {/* MAIN MONITOR */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start h-full">
           
-          {/* KOLOM 5: PENDING / NEED ALLOCATION */}
+          {/* KOLOM NEED ALLOCATION - TETAP STATIS DI KIRI */}
           <div className="bg-gray-200/50 p-2 rounded-[1.5rem] border-2 border-dashed border-gray-300 flex flex-col gap-3 min-h-[500px]">
             <div className="bg-orange-500 p-2 rounded-xl shadow-sm flex items-center justify-between mb-1">
               <span className="text-[9px] font-black text-white uppercase italic">NEED ALLOCATION</span>
@@ -423,99 +422,119 @@ export default function DashboardSPV() {
                   user={user}
                 />
               ))}
-            
-            {pendingRequests.length === 0 && (
-               <div className="flex flex-col items-center justify-center py-20 opacity-20">
-                  <svg className="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-                  <p className="text-[8px] font-black uppercase">All Allocated</p>
-               </div>
-            )}
           </div>
 
-          {/* KOLOM 1-4: GROUPING BY PIC */}
-          <div className="md:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Object.keys(groupedByPic).length > 0 ? (
-              Object.keys(groupedByPic).map((picName) => {
-                // LOGIKA HITUNGAN PER PIC
-                const tasks = groupedByPic[picName];
-                const total = tasks.length;
-                const inProgress = tasks.filter(t => t.status?.toLowerCase() === 'sedang dikerjakan').length;
-                const lateToDo = tasks.filter(t => {
-                   const s = t.status?.toLowerCase();
-                   const now = Date.now();
-                   const target = new Date(t.targetSelesai || t.deadline).getTime();
-                   return s === 'to do' && now > target;
-                }).length;
-                const wtlToDo = tasks.filter(t => {
-                   const s = t.status?.toLowerCase();
-                   const now = Date.now();
-                   const target = new Date(t.targetSelesai || t.deadline).getTime();
-                   return s === 'to do' && now <= target;
-                }).length;
+          {/* KOLOM 1-4: GROUPING BY PIC - SCROLL BAR DI ATAS */}
+          <div className="md:col-span-4 overflow-x-auto pb-4 pt-2 custom-scrollbar top-scrollbar">
+            <div className="flex flex-nowrap gap-4 min-w-max inner-content">
+              {Object.keys(groupedByPic).length > 0 ? (
+                Object.keys(groupedByPic).map((picName) => {
+                  const tasks = groupedByPic[picName];
+                  const total = tasks.length;
+                  const inProgress = tasks.filter(t => t.status?.toLowerCase() === 'sedang dikerjakan').length;
+                  const lateToDo = tasks.filter(t => {
+                     const s = t.status?.toLowerCase();
+                     const now = Date.now();
+                     const target = new Date(t.targetSelesai || t.deadline).getTime();
+                     return s === 'to do' && now > target;
+                  }).length;
+                  const wtlToDo = tasks.filter(t => {
+                     const s = t.status?.toLowerCase();
+                     const now = Date.now();
+                     const target = new Date(t.targetSelesai || t.deadline).getTime();
+                     return s === 'to do' && now <= target;
+                  }).length;
 
-                return (
-                  <div key={picName} className="flex flex-col gap-3">
-                    {/* UPDATED HEADER PIC DENGAN 4 ANGKA */}
-                    <div className="bg-[#1e4890] p-2 rounded-xl shadow-sm border-b-2 border-white/20">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[9px] font-black text-white uppercase italic tracking-tighter truncate max-w-[70%]">{picName}</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[6px] font-black text-blue-200">TTL</span>
-                          <span className="bg-white/20 text-white text-[9px] px-1.5 py-0.5 rounded-md font-black">{total}</span>
+                  return (
+                    <div key={picName} className="flex flex-col gap-3 w-64 sm:w-72 shrink-0">
+                      {/* HEADER PIC */}
+                      <div className="bg-[#1e4890] p-2 rounded-xl shadow-sm border-b-2 border-white/20">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[9px] font-black text-white uppercase italic tracking-tighter truncate max-w-[70%]">{picName}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[6px] font-black text-blue-200">TTL</span>
+                            <span className="bg-white/20 text-white text-[9px] px-1.5 py-0.5 rounded-md font-black">{total}</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between gap-1">
+                           <div className="flex-1 bg-white/10 rounded-md p-1 flex flex-col items-center">
+                              <span className="text-[5px] font-black text-blue-100 uppercase leading-none mb-0.5">PRG</span>
+                              <span className="text-[9px] font-black text-white">{inProgress}</span>
+                           </div>
+                           <div className={`flex-1 rounded-md p-1 flex flex-col items-center ${lateToDo > 0 ? 'bg-red-500/40 animate-pulse' : 'bg-white/10'}`}>
+                              <span className="text-[5px] font-black text-red-100 uppercase leading-none mb-0.5">LATE</span>
+                              <span className="text-[9px] font-black text-white">{lateToDo}</span>
+                           </div>
+                           <div className="flex-1 bg-white/10 rounded-md p-1 flex flex-col items-center">
+                              <span className="text-[5px] font-black text-blue-100 uppercase leading-none mb-0.5">WTL</span>
+                              <span className="text-[9px] font-black text-white">{wtlToDo}</span>
+                           </div>
                         </div>
                       </div>
-                      <div className="flex justify-between gap-1">
-                         <div className="flex-1 bg-white/10 rounded-md p-1 flex flex-col items-center">
-                            <span className="text-[5px] font-black text-blue-100 uppercase leading-none mb-0.5">PRG</span>
-                            <span className="text-[9px] font-black text-white">{inProgress}</span>
-                         </div>
-                         <div className={`flex-1 rounded-md p-1 flex flex-col items-center ${lateToDo > 0 ? 'bg-red-500/40 animate-pulse' : 'bg-white/10'}`}>
-                            <span className="text-[5px] font-black text-red-100 uppercase leading-none mb-0.5">LATE</span>
-                            <span className="text-[9px] font-black text-white">{lateToDo}</span>
-                         </div>
-                         <div className="flex-1 bg-white/10 rounded-md p-1 flex flex-col items-center">
-                            <span className="text-[5px] font-black text-blue-100 uppercase leading-none mb-0.5">WTL</span>
-                            <span className="text-[9px] font-black text-white">{wtlToDo}</span>
-                         </div>
+
+                      <div className="flex flex-col gap-3">
+                        {tasks
+                          .sort((a, b) => {
+                            const scoreA = getSortScore(a);
+                            const scoreB = getSortScore(b);
+                            if (scoreA !== scoreB) return scoreA - scoreB;
+                            const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+                            const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+                            return timeA - timeB;
+                          })
+                          .map((req) => (
+                            <CardItem 
+                              key={req.id} 
+                              req={req} 
+                              isAuthorized={isAuthorized} 
+                              editId={editId} 
+                              setEditId={setEditId} 
+                              picList={picList} 
+                              handleUpdateTask={handleUpdateTask} 
+                              handleReject={handleReject} 
+                              user={user}
+                            />
+                          ))}
                       </div>
                     </div>
-
-                    <div className="flex flex-col gap-3">
-                      {tasks
-                        .sort((a, b) => {
-                          const scoreA = getSortScore(a);
-                          const scoreB = getSortScore(b);
-                          if (scoreA !== scoreB) return scoreA - scoreB;
-                          const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-                          const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
-                          return timeA - timeB;
-                        })
-                        .map((req) => (
-                          <CardItem 
-                            key={req.id} 
-                            req={req} 
-                            isAuthorized={isAuthorized} 
-                            editId={editId} 
-                            setEditId={setEditId} 
-                            picList={picList} 
-                            handleUpdateTask={handleUpdateTask} 
-                            handleReject={handleReject} 
-                            user={user}
-                          />
-                        ))}
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="col-span-full py-10 text-center text-gray-400 italic text-[10px] font-black uppercase tracking-widest">No Active Assignments</div>
-            )}
+                  );
+                })
+              ) : (
+                <div className="col-span-full py-10 text-center text-gray-400 italic text-[10px] font-black uppercase tracking-widest min-w-[300px]">No Active Assignments</div>
+              )}
+            </div>
           </div>
 
         </div>
       </div>
 
       {selectedTask && <ImageModal task={selectedTask} onClose={() => setSelectedTask(null)} />}
+
+      {/* CSS KHUSUS UNTUK SCROLLBAR DI ATAS */}
+      <style jsx global>{`
+        .top-scrollbar {
+          transform: rotateX(180deg);
+          -ms-overflow-style: none; /* IE and Edge */
+        }
+        .inner-content {
+          transform: rotateX(180deg);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 10px;
+          border: 2px solid #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #1e4890;
+        }
+      `}</style>
     </div>
   );
 }
