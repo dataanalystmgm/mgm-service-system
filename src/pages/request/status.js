@@ -114,6 +114,8 @@ function SlaTracker({ targetDate, status, closedAt }) {
   );
 }
 
+// ... kode import tetap sama ...
+
 export default function RequestStatus() {
   const { user } = useAuth();
   const [myRequests, setMyRequests] = useState([]);
@@ -130,7 +132,30 @@ export default function RequestStatus() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMyRequests(data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+
+      // --- LOGIKA SORTING KUSTOM SESUAI PERMINTAAN ---
+      const statusPriority = {
+        'sudah selesai': 1,
+        'to do': 2,
+        'sedang dikerjakan': 3,
+        'pending': 4, // Cadangan jika ada status pending
+        'ditolak': 5,
+        'pause': 6,
+        'sudah divalidasi user': 7
+      };
+
+      const sortedData = data.sort((a, b) => {
+        const priorityA = statusPriority[a.status?.toLowerCase()] || 99;
+        const priorityB = statusPriority[b.status?.toLowerCase()] || 99;
+
+        // Jika status sama, urutkan berdasarkan waktu terbaru (createdAt)
+        if (priorityA === priorityB) {
+          return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+        }
+        return priorityA - priorityB;
+      });
+
+      setMyRequests(sortedData);
       setLoading(false);
     });
     return () => unsubscribe();
