@@ -26,9 +26,8 @@ export default function GeneralReport() {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [viewMode, setViewMode] = useState('day'); // Opsi: 'day', 'week', 'month'
 
-  // PROTEKSI AKSES: Hanya NIK MGM 4329 dan MGM 1111
   useEffect(() => {
-    const AUTHORIZED = ["MGM 4329", "MGM 1111"];
+    const AUTHORIZED = ["MGM 4329", "MGM 10619", "MGM 063"];
     if (user && !AUTHORIZED.includes(user.nik)) {
       router.push('/');
     }

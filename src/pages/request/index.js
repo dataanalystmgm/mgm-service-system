@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import Swal from 'sweetalert2'; 
 
 // Definisi Admin secara terpusat
-const ALLOWED_ADMINS = ["MGM 4329", "MGM 1111"];
+const ALLOWED_ADMINS = ["MGM 4329", "MGM 10619", "MGM 063"]; // Update daftar NIK admin yang diizinkan
 
 // --- HELPER UNTUK NOTIFIKASI MGM STYLE ---
 const mgmNotify = {

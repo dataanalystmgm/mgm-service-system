@@ -213,7 +213,7 @@ export default function DashboardSPV() {
   const [filterDate, setFilterDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const SUPER_ADMIN_ID = ["MGM 4329", "MGM 1111"];
+  const SUPER_ADMIN_ID = ["MGM 4329", "MGM 10619", "MGM 063"];
   const isAuthorized = SUPER_ADMIN_ID.includes(user?.nik);
 
   useEffect(() => {
