@@ -1,13 +1,7 @@
 {
   "/_app": "pages/_app.js",
-  "/": "pages/index.js",
-  "/admin/DashboardSPV": "pages/admin/DashboardSPV.js",
-  "/pic/DashboardPIC": "pages/pic/DashboardPIC.js",
-  "/login": "pages/login.js",
-  "/report": "pages/report.js",
-  "/request": "pages/request.js",
-  "/signup": "pages/signup.js",
-  "/request/status": "pages/request/status.js",
   "/_error": "pages/_error.js",
-  "/_document": "pages/_document.js"
+  "/_document": "pages/_document.js",
+  "/": "pages/index.js",
+  "/login": "pages/login.js"
 }
