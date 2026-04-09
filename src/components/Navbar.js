@@ -16,7 +16,7 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // LOGIKA OTORISASI (Hanya NIK ini yang bisa melihat menu Admin & Report)
-  const AUTHORIZED_IDS = ["MGM 4329", "MGM 1111"];
+  const AUTHORIZED_IDS = ["MGM 4329", "MGM 10619", "MGM 063"]; // Update daftar NIK yang diizinkan akses SPV/Admin & Report
   const isAuthorizedAdmin = user && AUTHORIZED_IDS.includes(user.nik);
 
   // State untuk Edit Akun
