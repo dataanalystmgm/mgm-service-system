@@ -1,4 +1,5 @@
 // src/components/ImageModal.js
+import '@/styles/globals.css';
 
 export default function ImageModal({ task, onClose }) {
   // Fungsi untuk mengubah link Google Drive menjadi link preview

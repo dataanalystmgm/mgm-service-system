@@ -6,7 +6,7 @@ export default function Home() {
   const { user } = useAuth(); 
 
   // Daftar NIK yang diizinkan akses SPV/Admin & Report
-  const AUTHORIZED_ADMINS = ["MGM 4329", "MGM 1111"];
+  const AUTHORIZED_ADMINS = ["MGM 4329", "MGM 10619", "MGM 063"];
   const isAdminAuthorized = user && AUTHORIZED_ADMINS.includes(user.nik);
 
   return (
